@@ -55,7 +55,7 @@ LiveKit Cloud (room) <--WebRTC audio--> Agent worker (LiveKit Agents)
 - STT: Deepgram Nova-3
 - LLM: Groq gpt-oss-120b, low reasoning
 - TTS: Cartesia Sonic
-- DB: Postgres on Supabase
+- DB: Postgres on Neon
 - Hosting: Frontend on Vercel, Agent on LiveKit Cloud
 
 ## Key Flows
@@ -91,3 +91,4 @@ LiveKit Cloud (room) <--WebRTC audio--> Agent worker (LiveKit Agents)
 - Deepgram Nova-3 over Groq Whisper: streams partial transcripts
 - Groq gpt-oss-120b (easy to switch)
 - Cartesia Sonic over ElevenLabs / Deepgram Aura-2 / Groq TTS: fastest time-to-first-audio
+- Neon over Supabase: supports IPv4 on the free tier
