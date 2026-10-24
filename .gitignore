@@ -1,1 +1,4 @@
 *.local.md
+
+.env*
+!.env.example
