@@ -1,4 +1,6 @@
 *.local.md
 
+__pycache__
+
 .env*
 !.env.example
