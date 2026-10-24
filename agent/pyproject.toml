@@ -1,0 +1,13 @@
+[project]
+name = "agent"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "livekit-agents[cartesia,deepgram,groq]>=1.8.9",
+    "python-dotenv>=1.2.4",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.2",
+]
