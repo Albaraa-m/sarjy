@@ -34,6 +34,9 @@ async def entrypoint(ctx: JobContext):
         stt=deepgram.STT(model="nova-3"),
         llm=groq.LLM(model="openai/gpt-oss-120b", reasoning_effort="low"),
         tts=cartesia.TTS(model="sonic-3", voice=os.environ["CARTESIA_VOICE_ID"]),
+        # Wait a bit longer than the 0.5 s default before ending the user's turn, so pauses
+        # mid-sentence ("I ate rice... and chicken") don't make Sarjy talk over the user.
+        turn_handling={"endpointing": {"min_delay": 0.8}},
     )
     memory.listen(session)
     await session.start(agent=Sarjy(memory, NutritionTools(Nutrition())), room=ctx.room)

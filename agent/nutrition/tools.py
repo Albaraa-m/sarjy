@@ -1,4 +1,8 @@
+import asyncio
+import random
+
 from livekit.agents import RunContext, function_tool, llm
+from livekit.agents.voice import SpeechHandle
 
 from .nutrition import Nutrition
 
@@ -9,6 +13,10 @@ If the lookup is unavailable or the food isn't found, say so, then give your own
 clearly call it an estimate. If the user doesn't say how much, ask; if they use a unit other
 than grams, convert it and state your assumption."""
 
+# Said only when a lookup is slow, so quick answers come without filler.
+FILLER_DELAY = 0.6
+FILLERS = ["Let me look that up.", "One sec.", "Checking the numbers.", "Let me see."]
+
 
 class NutritionTools(llm.Toolset):
     """The nutrition tools the LLM can call, plus the instructions for using them."""
@@ -18,6 +26,7 @@ class NutritionTools(llm.Toolset):
     def __init__(self, nutrition: Nutrition):
         super().__init__(id="nutrition")
         self.nutrition = nutrition
+        self._filler: SpeechHandle | None = None
 
     @function_tool
     async def lookup_nutrition(self, context: RunContext, food: str, grams: float) -> dict:
@@ -27,5 +36,9 @@ class NutritionTools(llm.Toolset):
             food: A generic food name, e.g. "chicken breast cooked" or "white rice cooked".
             grams: The amount in grams.
         """
-        context.session.say("Let me check USDA's database.")
-        return await self.nutrition.lookup(food, grams)
+        lookup = asyncio.ensure_future(self.nutrition.lookup(food, grams))
+        done, _ = await asyncio.wait({lookup}, timeout=FILLER_DELAY)
+        # Don't start a new filler while the last one is still playing.
+        if not done and (self._filler is None or self._filler.done()):
+            self._filler = context.session.say(random.choice(FILLERS))
+        return await lookup
