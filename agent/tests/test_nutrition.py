@@ -4,7 +4,7 @@ import nutrition
 async def test_finds_food_and_scales_to_grams():
     result = await nutrition.lookup("chicken breast cooked", 200)
     assert result["status"] == "found"
-    assert result["source"] == "USDA FoodData Central"
+    assert result["source"] == "usda"
     assert max(match["protein_g"] for match in result["matches"]) > 40
 
 

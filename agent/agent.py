@@ -80,7 +80,7 @@ class Sarjy(Agent):
             protein_g: Protein in grams for that amount.
             carbs_g: Carbohydrates in grams for that amount.
             fat_g: Fat in grams for that amount.
-            source: "usda" if the numbers came from lookup_nutrition, "estimate" otherwise.
+            source: The "source" returned by lookup_nutrition, or "estimate" if you estimated.
         """
         try:
             await self.food_log.add(food, grams, calories, protein_g, carbs_g, fat_g, source)

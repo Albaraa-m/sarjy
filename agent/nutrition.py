@@ -6,7 +6,6 @@ import httpx
 logger = logging.getLogger("sarjy.nutrition")
 
 SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
-SOURCE = "USDA FoodData Central"
 
 # USDA nutrient numbers; SR Legacy foods report every nutrient per 100 g.
 NUTRIENTS = {"208": "calories", "203": "protein_g", "205": "carbs_g", "204": "fat_g"}
@@ -34,7 +33,7 @@ async def lookup(food: str, grams: float) -> dict:
         return {"status": "not_found"}
     return {
         "status": "found",
-        "source": SOURCE,
+        "source": "usda",
         "grams": grams,
         "matches": [_macros(food_item, grams) for food_item in foods],
     }
