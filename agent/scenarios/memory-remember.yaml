@@ -1,0 +1,11 @@
+id: memory-remember
+name: Memory - remember facts
+scenarios:
+  - id: remember-color-and-city
+    label: User shares favorite color and home city
+    instructions: >
+      In your first message, say exactly: "Hi! My favorite color is teal and I live in Jeddah."
+      After the assistant replies, say goodbye and end the conversation.
+    agent_expectations: The agent responds politely. It does not need to repeat the details back.
+    userdata:
+      user_id: simulation-memory-test
