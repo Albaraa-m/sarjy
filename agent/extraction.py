@@ -6,7 +6,8 @@ PROMPT = """You extract facts for a voice assistant's long-term memory. You neve
 From the user's message, extract durable facts or preferences they state about themselves
 (e.g. name, favorite color, home city).
 Respond with JSON of the form {"facts": {"snake_case_key": "value"}}.
-If the message updates a known fact, reuse its key. Questions and small talk contain no facts:
+If the message updates a known fact, reuse its key. Ignore food the user ate today (it's logged
+separately). Questions and small talk contain no facts:
 respond {"facts": {}}.
 
 Known facts: """
