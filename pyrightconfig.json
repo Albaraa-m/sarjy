@@ -1,0 +1,6 @@
+{
+  "venvPath": "agent",
+  "venv": ".venv",
+  "executionEnvironments": [{ "root": "agent" }],
+  "exclude": ["agent/.venv"]
+}
