@@ -38,9 +38,6 @@ class Sarjy(Agent):
 
 
 async def get_user_id(ctx: JobContext) -> str:
-    # Simulations pass a fixed user_id so memory can be tested across runs.
-    if simulation := ctx.simulation_context():
-        return str(simulation.userdata()["user_id"])
     participant = await ctx.wait_for_participant()
     return participant.identity
 
