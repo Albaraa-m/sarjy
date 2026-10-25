@@ -1,11 +1,10 @@
 import asyncio
 import logging
-import os
 
-import asyncpg
 from livekit.agents import utils
 
-from extraction import extract_facts
+from . import db
+from .llm_extractor import extract_facts
 
 logger = logging.getLogger("sarjy.memory")
 
@@ -23,12 +22,7 @@ class UserMemory:
 
     @classmethod
     async def load(cls, user_id: str) -> UserMemory:
-        conn = await asyncpg.connect(os.environ["DATABASE_URL"])
-        try:
-            rows = await conn.fetch("select key, value from memories where user_id = $1", user_id)
-        finally:
-            await conn.close()
-        return cls(user_id, {row["key"]: row["value"] for row in rows})
+        return cls(user_id, await db.load_facts(user_id))
 
     def as_prompt(self) -> str:
         if not self.facts:
@@ -46,25 +40,9 @@ class UserMemory:
         async with self._lock:
             try:
                 new_facts = await extract_facts(text, self.facts)
-                await self._save(new_facts)
-                self.facts.update(new_facts)
                 if new_facts:
+                    await db.save_facts(self.user_id, new_facts)
+                    self.facts.update(new_facts)
                     logger.info("remembered facts: %s", new_facts)
             except Exception:
                 logger.exception("failed to remember facts")
-
-    async def _save(self, facts: dict[str, str]) -> None:
-        if not facts:
-            return
-        conn = await asyncpg.connect(os.environ["DATABASE_URL"])
-        try:
-            # Upsert: a new value for an existing key overwrites the old one.
-            await conn.executemany(
-                """
-                insert into memories (user_id, key, value) values ($1, $2, $3)
-                on conflict (user_id, key) do update set value = excluded.value, updated_at = now()
-                """,
-                [(self.user_id, key, value) for key, value in facts.items()],
-            )
-        finally:
-            await conn.close()
