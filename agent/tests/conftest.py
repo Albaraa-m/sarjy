@@ -22,6 +22,5 @@ async def user_id():
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
         await conn.execute("delete from memories where user_id = $1", user_id)
-        await conn.execute("delete from food_log where user_id = $1", user_id)
     finally:
         await conn.close()

@@ -11,7 +11,7 @@ async def chat(llm: groq.LLM, user_id: str, text: str):
     memory = await UserMemory.load(user_id)
     async with AgentSession(llm=llm) as session:
         memory.listen(session)
-        await session.start(Sarjy(memory, NutritionTools(Nutrition(user_id))))
+        await session.start(Sarjy(memory, NutritionTools(Nutrition())))
         result = await session.run(user_input=text)
     await memory.wait_for_pending()
     return result, memory

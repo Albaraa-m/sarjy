@@ -36,4 +36,4 @@ async def entrypoint(ctx: JobContext):
         tts=cartesia.TTS(model="sonic-3", voice=os.environ["CARTESIA_VOICE_ID"]),
     )
     memory.listen(session)
-    await session.start(agent=Sarjy(memory, NutritionTools(Nutrition(user_id))), room=ctx.room)
+    await session.start(agent=Sarjy(memory, NutritionTools(Nutrition())), room=ctx.room)
