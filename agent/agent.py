@@ -14,9 +14,8 @@ from livekit.agents import (
 )
 from livekit.plugins import cartesia, deepgram, groq
 
-import nutrition
-from food_log import FoodLog
 from memory import UserMemory
+from nutrition import Nutrition
 
 load_dotenv()
 
@@ -34,10 +33,10 @@ server = AgentServer()
 
 
 class Sarjy(Agent):
-    def __init__(self, memory: UserMemory, food_log: FoodLog):
+    def __init__(self, memory: UserMemory, nutrition: Nutrition):
         super().__init__(instructions=INSTRUCTIONS + memory.as_prompt())
         self.memory = memory
-        self.food_log = food_log
+        self.nutrition = nutrition
 
     async def on_enter(self) -> None:
         self.session.on("conversation_item_added", self.on_conversation_item_added)
@@ -58,7 +57,7 @@ class Sarjy(Agent):
             grams: The amount in grams.
         """
         context.session.say("Let me check USDA's database.")
-        return await nutrition.lookup(food, grams)
+        return await self.nutrition.lookup(food, grams)
 
     @function_tool
     async def log_food(
@@ -83,15 +82,16 @@ class Sarjy(Agent):
             source: The "source" returned by lookup_nutrition, or "estimate" if you estimated.
         """
         try:
-            await self.food_log.add(food, grams, calories, protein_g, carbs_g, fat_g, source)
-            return await self.food_log.today()
+            return await self.nutrition.log(
+                food, grams, calories, protein_g, carbs_g, fat_g, source
+            )
         except Exception as error:
             raise ToolError("Couldn't save the food log, please try again later.") from error
 
     @function_tool
     async def get_daily_totals(self) -> dict:
         """Returns today's calorie and macro totals and the foods logged so far."""
-        return await self.food_log.today()
+        return await self.nutrition.today()
 
 
 async def get_user_id(ctx: JobContext) -> str:
@@ -112,4 +112,4 @@ async def entrypoint(ctx: JobContext):
         llm=groq.LLM(model="openai/gpt-oss-120b", reasoning_effort="low"),
         tts=cartesia.TTS(model="sonic-3", voice=os.environ["CARTESIA_VOICE_ID"]),
     )
-    await session.start(agent=Sarjy(memory, FoodLog(user_id)), room=ctx.room)
+    await session.start(agent=Sarjy(memory, Nutrition(user_id)), room=ctx.room)
