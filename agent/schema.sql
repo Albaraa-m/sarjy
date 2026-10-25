@@ -5,3 +5,19 @@ create table if not exists memories (
     updated_at timestamptz not null default now(),
     primary key (user_id, key)
 );
+
+-- One row per food the user logged, grouped by day for daily totals.
+create table if not exists food_log (
+    id         bigserial        primary key,
+    user_id    text             not null,
+    eaten_on   date             not null,
+    food       text             not null,
+    grams      double precision not null,
+    calories   double precision not null,
+    protein_g  double precision not null,
+    carbs_g    double precision not null,
+    fat_g      double precision not null,
+    source     text             not null,  -- 'usda' or 'estimate'
+    created_at timestamptz      not null default now()
+);
+create index if not exists food_log_user_day on food_log (user_id, eaten_on);
