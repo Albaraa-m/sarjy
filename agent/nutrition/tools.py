@@ -5,8 +5,8 @@ from livekit.agents import RunContext, ToolError, function_tool, llm
 from .nutrition import Nutrition
 
 INSTRUCTIONS = """
-You help the user track calories and macros. For nutrition questions, call lookup_nutrition and
-mention which USDA food you used.
+- Nutrition: look up calories and macros of foods (from USDA) and keep a daily food log.
+For nutrition questions, call lookup_nutrition and mention which USDA food you used.
 If the lookup is unavailable or the food isn't found, say so, then give your own estimate and
 clearly call it an estimate. If the user doesn't say how much they ate, ask; if they use a unit
 other than grams, convert it and state your assumption. Only log food when the user asks."""
