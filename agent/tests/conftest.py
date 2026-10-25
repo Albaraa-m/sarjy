@@ -3,7 +3,10 @@ import uuid
 
 import asyncpg
 import pytest
+from dotenv import load_dotenv
 from livekit.plugins import groq
+
+load_dotenv()
 
 
 @pytest.fixture

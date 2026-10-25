@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from livekit.agents import utils
+from livekit.agents import AgentSession, ConversationItemAddedEvent, utils
 
 from . import db
 from .llm_extractor import extract_facts
@@ -30,8 +30,14 @@ class UserMemory:
         remembered = "\n".join(f"- {key}: {value}" for key, value in self.facts.items())
         return f"\n\nWhat you remember about the user from past conversations:\n{remembered}"
 
-    def remember_in_background(self, text: str) -> None:
-        self._tasks.create_task(self._remember(text))
+    def listen(self, session: AgentSession) -> None:
+        """Remembers facts from every user message in the session, spoken or typed."""
+        session.on("conversation_item_added", self._on_conversation_item_added)
+
+    def _on_conversation_item_added(self, event: ConversationItemAddedEvent) -> None:
+        message = event.item
+        if message.type == "message" and message.role == "user" and message.text_content:
+            self._tasks.create_task(self._remember(message.text_content))
 
     async def wait_for_pending(self) -> None:
         await asyncio.gather(*self._tasks.tasks)
