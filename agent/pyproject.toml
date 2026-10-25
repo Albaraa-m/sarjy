@@ -3,6 +3,8 @@ name = "agent"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "asyncpg>=0.32.0",
+    "groq>=1.7.0",
     "livekit-agents[cartesia,deepgram,groq]>=1.8.9",
     "python-dotenv>=1.2.4",
 ]
