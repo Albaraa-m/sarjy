@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -23,11 +24,13 @@ class Nutrition:
 
     async def lookup(self, food: str, grams: float) -> dict:
         """Looks up a generic food and scales its macros to `grams`."""
+        start = time.perf_counter()
         try:
             foods = await usda.search(food)
         except httpx.HTTPError as error:
-            logger.warning("USDA lookup failed: %s", error)
+            logger.warning("USDA lookup %r failed after %d ms: %s", food, _ms_since(start), error)
             return {"status": "unavailable"}
+        logger.info("USDA lookup %r: %d matches in %d ms", food, len(foods), _ms_since(start))
         if not foods:
             return {"status": "not_found"}
         return {
@@ -51,6 +54,7 @@ class Nutrition:
         await db.add_food(
             self.user_id, _today(), food, grams, calories, protein_g, carbs_g, fat_g, source
         )
+        logger.info("logged %r (%g g, %g kcal, source=%s)", food, grams, calories, source)
         return await self.today()
 
     async def today(self) -> dict:
@@ -66,6 +70,10 @@ def _macros(food_item: dict, grams: float) -> dict:
         if name:
             macros[name] = round(nutrient["value"] * grams / 100, 1)
     return macros
+
+
+def _ms_since(start: float) -> int:
+    return round((time.perf_counter() - start) * 1000)
 
 
 def _today() -> date:

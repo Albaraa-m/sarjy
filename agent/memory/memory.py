@@ -22,7 +22,9 @@ class UserMemory:
 
     @classmethod
     async def load(cls, user_id: str) -> UserMemory:
-        return cls(user_id, await db.load_facts(user_id))
+        facts = await db.load_facts(user_id)
+        logger.info("loaded %d facts for user %s", len(facts), user_id)
+        return cls(user_id, facts)
 
     def as_prompt(self) -> str:
         if not self.facts:

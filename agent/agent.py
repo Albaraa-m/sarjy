@@ -1,3 +1,4 @@
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -10,6 +11,8 @@ from sarjy import Sarjy
 
 load_dotenv()
 
+logger = logging.getLogger("sarjy")
+
 server = AgentServer()
 
 
@@ -21,6 +24,7 @@ async def get_user_id(ctx: JobContext) -> str:
 @server.rtc_session(agent_name="sarjy")
 async def entrypoint(ctx: JobContext):
     user_id = await get_user_id(ctx)
+    logger.info("session started for user %s", user_id)
     memory = await UserMemory.load(user_id)
     # Let the last turns finish saving before the job exits.
     ctx.add_shutdown_callback(memory.wait_for_pending)
