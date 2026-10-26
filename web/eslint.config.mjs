@@ -36,5 +36,13 @@ export default defineConfig([
     },
     rules: Object.fromEntries(SARJ_RULES.map((rule) => [`sarj/${rule}`, "error"])),
   },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  // Vendored LiveKit Agents UI components (installed with `shadcn add`), kept as upstream wrote them.
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "components/agents-ui/**",
+    "hooks/agents-ui/**",
+  ]),
 ]);
