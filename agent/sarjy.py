@@ -1,3 +1,5 @@
+import random
+
 from livekit.agents import Agent
 
 from memory import UserMemory
@@ -15,6 +17,12 @@ If asked what you can do, briefly mention your general help, your memory, and th
 Abilities:"""
 
 
+GREETINGS = [
+    "Hi, I'm Sarjy. How can I help?",
+    "Hello, Sarjy here. How can I help today?",
+]
+
+
 class Sarjy(Agent):
     """Sarjy's persona, plus the abilities each module brings."""
 
@@ -25,6 +33,5 @@ class Sarjy(Agent):
         )
 
     async def on_enter(self) -> None:
-        self.session.generate_reply(
-            instructions="Greet the user in one short, general sentence without naming any topic."
-        )
+        # A fixed greeting needs no LLM call, so it plays as soon as the session starts.
+        self.session.say(random.choice(GREETINGS))
