@@ -34,10 +34,11 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         stt=deepgram.STT(model="nova-3"),
         # Qwen on Cerebras has the rate limits a live demo needs; if it fails or is rate limited,
-        # the same request goes to gpt-oss on Groq. Thinking is off to keep replies fast.
+        # the same request goes to gpt-oss on Groq. Low (not "none") reasoning: with thinking fully
+        # off, Qwen on Cerebras often stops after a word or two.
         llm=llm.FallbackAdapter(
             [
-                openai.LLM.with_cerebras(model="qwen-3.8-27b", reasoning_effort="none"),
+                openai.LLM.with_cerebras(model="qwen-3.8-27b", reasoning_effort="low"),
                 groq.LLM(model="openai/gpt-oss-120b", reasoning_effort="low"),
             ]
         ),

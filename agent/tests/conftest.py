@@ -11,7 +11,7 @@ load_dotenv()
 
 @pytest.fixture
 def llm() -> openai.LLM:
-    return openai.LLM.with_cerebras(model="qwen-3.8-27b", reasoning_effort="none")
+    return openai.LLM.with_cerebras(model="qwen-3.8-27b", reasoning_effort="low")
 
 
 @pytest.fixture
