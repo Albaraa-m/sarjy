@@ -40,5 +40,6 @@ class NutritionTools(llm.Toolset):
         done, _ = await asyncio.wait({lookup}, timeout=FILLER_DELAY)
         # Don't start a new filler while the last one is still playing.
         if not done and (self._filler is None or self._filler.done()):
-            self._filler = context.session.say(random.choice(FILLERS))
+            # Kept out of the chat history: the LLM should answer, not continue the filler.
+            self._filler = context.session.say(random.choice(FILLERS), add_to_chat_ctx=False)
         return await lookup
