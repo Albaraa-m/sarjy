@@ -30,7 +30,7 @@ class UserMemory:
         if not self.facts:
             return ""
         remembered = "\n".join(f"- {key}: {value}" for key, value in self.facts.items())
-        return f"\n\nWhat you remember about the user from past conversations:\n{remembered}"
+        return f"\n\nWhat you know about the user:\n{remembered}"
 
     def listen(self, session: AgentSession) -> None:
         """Remembers facts from every user message in the session, spoken or typed."""
