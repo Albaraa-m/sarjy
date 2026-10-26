@@ -1,20 +1,37 @@
 "use client";
 
-import { RoomAudioRenderer, SessionProvider, useAgent, useSession } from "@livekit/components-react";
+import {
+  RoomAudioRenderer,
+  SessionProvider,
+  StartAudio,
+  useAgent,
+  useSession,
+} from "@livekit/components-react";
 import { TokenSource } from "livekit-client";
 import { useEffect, useState } from "react";
 
-import { UsernameForm } from "@/components/username-form";
+import { CallControls } from "@/components/call-controls";
+import { SarjyAura } from "@/components/sarjy-aura";
+import { Welcome } from "@/components/welcome";
 
 const TOKEN_SOURCE = TokenSource.endpoint("/api/token");
 
 export function VoiceSession() {
   const [username, setUsername] = useState<string | null>(null);
 
-  if (!username) {
-    return <UsernameForm onSubmit={setUsername} />;
-  }
-  return <Conversation username={username} onEnd={() => setUsername(null)} />;
+  return (
+    <div className="flex min-h-dvh flex-col px-6 py-5">
+      <header className="flex items-center justify-between text-sm">
+        <span className="font-semibold tracking-tight">Sarjy</span>
+        {username && <span className="text-foreground/50">{username}</span>}
+      </header>
+      {username ? (
+        <Conversation username={username} onEnd={() => setUsername(null)} />
+      ) : (
+        <Welcome onStart={setUsername} />
+      )}
+    </div>
+  );
 }
 
 type ConversationProps = {
@@ -36,19 +53,23 @@ function Conversation({ username, onEnd }: ConversationProps) {
     return () => void end();
   }, [start, end]);
 
+  const failure = error ?? (agent.state === "failed" ? agent.failureReasons.join(", ") : null);
+
   return (
     <SessionProvider session={session}>
       <RoomAudioRenderer />
-      <div className="flex flex-col items-center gap-4">
-        <p>
-          Hi {username}, Sarjy is {agent.state}
+      <section className="flex flex-1 flex-col items-center justify-center gap-4">
+        <SarjyAura size="lg" state={agent.state} audioTrack={agent.microphoneTrack} />
+        {/* The Aura shows listening, thinking and speaking; text is only for what it can't. */}
+        <p className={failure ? "h-6 text-danger" : "h-6 text-foreground/60"}>
+          {failure ?? (agent.isConnected ? null : "Connecting…")}
         </p>
-        {agent.state === "failed" && <p>{agent.failureReasons.join(", ")}</p>}
-        {error && <p>{error}</p>}
-        <button type="button" onClick={onEnd} className="rounded-full border px-6 py-2">
-          End
-        </button>
-      </div>
+        <StartAudio
+          label="Tap to hear Sarjy"
+          className="rounded-full bg-white/10 px-5 py-2 text-sm hover:bg-white/15"
+        />
+      </section>
+      <CallControls microphoneTrack={session.local.microphoneTrack} onEnd={onEnd} />
     </SessionProvider>
   );
 }
