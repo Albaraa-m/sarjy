@@ -7,8 +7,9 @@ From the user's message, extract durable facts or preferences they state about t
 (e.g. name, favorite color, home city).
 Respond with JSON of the form {"facts": {"snake_case_key": "value"}}.
 If the message updates a known fact, reuse its key. Ignore one-off details like what the user
-ate today. Questions and small talk contain no facts:
-respond {"facts": {}}.
+ate today. The assistant is named Sarjy (speech-to-text may spell it "Sergei", "Sergey", "Sarji"):
+a name the user addresses ("Hey, Sergei") is the assistant's, never the user's.
+Questions and small talk contain no facts: respond {"facts": {}}.
 
 Known facts: """
 

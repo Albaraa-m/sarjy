@@ -24,3 +24,11 @@ async def test_remembers_facts_across_sessions(llm, user_id):
     result, _ = await chat(llm, user_id, "What's my favorite color?")
     reply = result.expect.next_event().is_message(role="assistant").event().item
     assert "teal" in (reply.text_content or "").lower()
+
+
+async def test_greeting_the_assistant_is_not_the_users_name(llm, user_id):
+    # Deepgram heard "Hey, Sarjy" as "Hey, Sergei" in a live call, and it was saved as the user's name.
+    _, memory = await chat(
+        llm, user_id, "Hey, Sergei. Can you help me with? What do you have to offer?"
+    )
+    assert memory.facts == {}
