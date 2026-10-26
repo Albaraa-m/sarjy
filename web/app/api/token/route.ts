@@ -2,6 +2,7 @@ import { AccessToken, RoomAgentDispatch, RoomConfiguration } from "livekit-serve
 import { z } from "zod";
 
 import { env } from "@/lib/env";
+import { USERNAME_PATTERN } from "@/lib/username-pattern";
 
 const AGENT_NAME = "sarjy";
 const TOKEN_TTL = "10m";
@@ -9,7 +10,7 @@ const TOKEN_TTL = "10m";
 // Request and response use the format LiveKit's browser SDK expects from our endpoint (snake_case):
 // https://docs.livekit.io/frontends/authentication/tokens/endpoint/
 const TokenRequestSchema = z.object({
-  participant_identity: z.string().regex(/^[a-z0-9-]{1,64}$/),
+  participant_identity: z.string().regex(USERNAME_PATTERN),
 });
 
 type TokenResponse = {
