@@ -10,7 +10,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "groq" },
     { name = "httpx" },
-    { name = "livekit-agents", extra = ["cartesia", "deepgram", "groq"] },
+    { name = "livekit-agents", extra = ["cartesia", "deepgram", "groq", "openai"] },
     { name = "python-dotenv" },
 ]
 
@@ -27,7 +27,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.32.0" },
     { name = "groq", specifier = ">=1.7.0" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "livekit-agents", extras = ["cartesia", "deepgram", "groq"], specifier = ">=1.8.9" },
+    { name = "livekit-agents", extras = ["cartesia", "deepgram", "groq", "openai"], specifier = ">=1.8.9" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
 ]
 

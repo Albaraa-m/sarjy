@@ -1,12 +1,12 @@
 from livekit.agents import AgentSession
-from livekit.plugins import groq
+from livekit.plugins import openai
 
 from memory import UserMemory
 from nutrition import Nutrition, NutritionTools
 from sarjy import Sarjy
 
 
-async def chat(llm: groq.LLM, user_id: str, text: str):
+async def chat(llm: openai.LLM, user_id: str, text: str):
     """Runs one text turn in a new session, the way a returning user would start a call."""
     memory = await UserMemory.load(user_id)
     async with AgentSession(llm=llm) as session:

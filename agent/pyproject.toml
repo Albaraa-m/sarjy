@@ -6,7 +6,7 @@ dependencies = [
     "asyncpg>=0.32.0",
     "groq>=1.7.0",
     "httpx>=0.28.1",
-    "livekit-agents[cartesia,deepgram,groq]>=1.8.9",
+    "livekit-agents[cartesia,deepgram,groq,openai]>=1.8.9",
     "python-dotenv>=1.2.4",
 ]
 

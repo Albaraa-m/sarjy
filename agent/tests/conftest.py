@@ -4,14 +4,14 @@ import uuid
 import asyncpg
 import pytest
 from dotenv import load_dotenv
-from livekit.plugins import groq
+from livekit.plugins import openai
 
 load_dotenv()
 
 
 @pytest.fixture
-def llm() -> groq.LLM:
-    return groq.LLM(model="openai/gpt-oss-120b", reasoning_effort="low")
+def llm() -> openai.LLM:
+    return openai.LLM.with_cerebras(model="qwen-3.8-27b", reasoning_effort="none")
 
 
 @pytest.fixture
