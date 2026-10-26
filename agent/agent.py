@@ -32,7 +32,7 @@ async def entrypoint(ctx: JobContext):
 
     # VAD (Silero) and turn detection (LiveKit turn detector) use framework defaults.
     session = AgentSession(
-        stt=deepgram.STT(model="nova-3"),
+        stt=deepgram.STT(model="nova-3", keyterm=["Sarjy"]),
         # Qwen on Cerebras has the rate limits a live demo needs; if it fails or is rate limited,
         # the same request goes to gpt-oss on Groq. Low (not "none") reasoning: with thinking fully
         # off, Qwen on Cerebras often stops after a word or two.
