@@ -1,7 +1,9 @@
 import random
+from collections.abc import AsyncGenerator
 
-from livekit.agents import Agent
+from livekit.agents import Agent, FlushSentinel, ModelSettings, llm
 
+import diagnostics
 from memory import UserMemory
 from nutrition import NutritionTools
 
@@ -36,3 +38,8 @@ class Sarjy(Agent):
     async def on_enter(self) -> None:
         # A fixed greeting needs no LLM call, so it plays as soon as the session starts.
         self.session.say(random.choice(GREETINGS))
+
+    def llm_node(
+        self, chat_ctx: llm.ChatContext, tools: list[llm.Tool], model_settings: ModelSettings
+    ) -> AsyncGenerator[llm.ChatChunk | str | FlushSentinel]:
+        return diagnostics.logged_llm_node(self, chat_ctx, tools, model_settings)

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from livekit.agents import AgentServer, AgentSession, JobContext, llm
 from livekit.plugins import cartesia, deepgram, groq, openai
 
+import diagnostics
 from memory import UserMemory
 from nutrition import Nutrition, NutritionTools
 from sarjy import Sarjy
@@ -46,4 +47,5 @@ async def entrypoint(ctx: JobContext):
         turn_handling={"endpointing": {"min_delay": 0.8}},
     )
     memory.listen(session)
+    diagnostics.watch(session)
     await session.start(agent=Sarjy(memory, NutritionTools(Nutrition())), room=ctx.room)
