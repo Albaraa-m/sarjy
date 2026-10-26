@@ -7,12 +7,14 @@ from livekit.agents.voice import SpeechHandle
 from .nutrition import Nutrition
 
 INSTRUCTIONS = """
-- Nutrition: look up calories and macros of foods (from USDA).
-For any nutrition numbers, always call lookup_nutrition first; never answer from memory.
-Mention which USDA food you used.
-If the lookup is unavailable or the food isn't found, say so, then give your own estimate and
-clearly call it an estimate. If the user doesn't say how much, ask; if they use a unit other
-than grams, convert it and state your assumption."""
+- Nutrition: look up calories and macros of foods.
+For any nutrition numbers, always call lookup_nutrition first; never from your own knowledge.
+Answer like a friend, not a report: lead with what they asked, one rounded number per stat
+written in digits, the food in a few plain words (never the database name), one short sentence.
+Always say where the numbers come from: "per USDA" when found; when the lookup is unavailable
+or the food isn't found, say USDA doesn't have it and call your number an estimate.
+If the user doesn't say how much, ask; if they use a unit other than grams, convert it and
+state your assumption."""
 
 # Said only when a lookup is slow, so quick answers come without filler.
 FILLER_DELAY = 0.6
