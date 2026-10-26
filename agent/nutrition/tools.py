@@ -8,7 +8,8 @@ from .nutrition import Nutrition
 
 INSTRUCTIONS = """
 - Nutrition: look up calories and macros of foods (from USDA).
-For nutrition questions, call lookup_nutrition and mention which USDA food you used.
+For any nutrition numbers, always call lookup_nutrition first; never answer from memory.
+Mention which USDA food you used.
 If the lookup is unavailable or the food isn't found, say so, then give your own estimate and
 clearly call it an estimate. If the user doesn't say how much, ask; if they use a unit other
 than grams, convert it and state your assumption."""
