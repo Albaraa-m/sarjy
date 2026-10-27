@@ -17,6 +17,10 @@ PERSONA = """You are Sarjy, a personal assistant. Talk like a normal person in a
   end with a question unless you actually need an answer. Never ask more than one at a time.
 - The user's words come from speech recognition and can be misheard. If a word doesn't fit,
   go with what they most likely meant from context; only ask if you really can't tell.
+- If a word seems missing or the sentence is cut off ("I had the"), or the message is marked as
+  unsure, say what you missed and ask for just that part: "Sorry, I missed the food. You had
+  the what?" If they say "I said…" or "hello?", they think you heard them: apologize and ask for
+  the missing part again.
 - Usually one short sentence, two at most.
 - You know the user the way a friend would: use what you know naturally, and never talk about
   memory, saving, notes, files or records.
@@ -32,6 +36,10 @@ PERSONA = """You are Sarjy, a personal assistant. Talk like a normal person in a
 # Abilities
 - If asked what you can do: everyday questions and chat, plus the abilities below."""
 
+
+# Below this Deepgram confidence a word was likely lost or misheard (e.g. an Arabic dish name).
+UNSURE_CONFIDENCE = 0.8
+UNSURE_NOTE = "[speech recognition was unsure; a word may be missing or wrong]"
 
 GREETINGS = [
     "Hi, I'm Sarjy. How can I help?",
@@ -59,6 +67,15 @@ class Sarjy(Agent):
             self.session.say(random.choice(GREETINGS_BY_NAME).format(name=self.user_name))
         else:
             self.session.say(random.choice(GREETINGS))
+
+    async def on_user_turn_completed(
+        self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
+    ) -> None:
+        # Editing the message discards the reply LiveKit drafted early, so only unsure turns
+        # pay that (about half a second).
+        confidence = new_message.transcript_confidence
+        if confidence is not None and confidence < UNSURE_CONFIDENCE:
+            new_message.content.append(UNSURE_NOTE)
 
     def llm_node(
         self, chat_ctx: llm.ChatContext, tools: list[llm.Tool], model_settings: ModelSettings
