@@ -26,8 +26,8 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
   const parsed = parseNutritionSummary(attribute);
 
   return (
-    <aside className="flex max-h-full flex-col self-start rounded-card border border-line bg-surface px-6 pt-6 text-body">
-      <header className="mb-5 flex items-baseline justify-between">
+    <aside className="flex h-full w-[380px] shrink-0 flex-col border-l border-line bg-surface px-6 text-body">
+      <header className="mb-3 flex h-14 shrink-0 items-center justify-between">
         <h2 className="text-title font-semibold">Today</h2>
         <span className="text-caption text-fg-faint">Daily targets</span>
       </header>
@@ -70,9 +70,10 @@ function Summary({ summary }: { summary: NutritionSummary }) {
       {summary.entries.length === 0 && summary.pending.length === 0 ? (
         <EmptyLog />
       ) : (
-        <div className="-mt-6 flex min-h-0 flex-col">
-          {/* Scrolls on its own, fading out at the bottom, so the totals above stay in view. */}
-          <ul className="mt-6 min-h-0 divide-y divide-line overflow-y-auto border-t border-line pb-8 [mask-image:linear-gradient(to_bottom,black_calc(100%-2.5rem),transparent)]">
+        <div className="flex min-h-0 flex-col border-t border-line">
+          {/* Scrolls on its own, fading out at the bottom, so the totals above stay in view.
+              The side padding gives the rows' highlight room without a sideways scrollbar. */}
+          <ul className="-mx-2 min-h-0 divide-y divide-line overflow-y-auto px-2 pb-8 [mask-image:linear-gradient(to_bottom,black_calc(100%-2.5rem),transparent)]">
             {newestFirst.map(({ entry, index }) => (
               <EntryRow
                 key={`${index}-${entry.food}`}

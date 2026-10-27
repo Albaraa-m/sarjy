@@ -13,14 +13,13 @@ const TOKEN_SOURCE = TokenSource.endpoint("/api/token");
 export function VoiceSession() {
   const [username, setUsername] = useState<string | null>(null);
 
+  if (username) {
+    return <Conversation username={username} onEnd={() => setUsername(null)} />;
+  }
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[1008px] flex-col px-6">
-      <AppHeader username={username} />
-      {username ? (
-        <Conversation username={username} onEnd={() => setUsername(null)} />
-      ) : (
-        <Welcome onStart={setUsername} />
-      )}
+    <div className="flex h-dvh flex-col px-6">
+      <AppHeader username={null} />
+      <Welcome onStart={setUsername} />
     </div>
   );
 }
@@ -55,6 +54,7 @@ function Conversation({ username, onEnd }: ConversationProps) {
     <SessionProvider session={session}>
       <RoomAudioRenderer />
       <CallScreen
+        username={username}
         agentState={agent.state}
         agentTrack={agent.microphoneTrack}
         microphoneTrack={session.local.microphoneTrack}
