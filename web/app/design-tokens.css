@@ -39,6 +39,10 @@
   --text-figure--line-height: 1.75rem;
   --text-figure--letter-spacing: -0.02em;
   --text-figure--font-weight: 500;
+  --text-wordmark: 1.75rem;
+  --text-wordmark--line-height: 2rem;
+  --text-wordmark--letter-spacing: -0.03em;
+  --text-wordmark--font-weight: 500;
 
   --spacing: 0.25rem;
   --radius-tag: 0.3125rem;
