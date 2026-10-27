@@ -1,4 +1,4 @@
-from .nutrition import Nutrition
+from .nutrition import FoodMatch, Macros, Nutrition
 from .tools import NutritionTools
 
-__all__ = ["Nutrition", "NutritionTools"]
+__all__ = ["FoodMatch", "Macros", "Nutrition", "NutritionTools"]

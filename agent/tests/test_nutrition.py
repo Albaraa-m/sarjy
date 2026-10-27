@@ -1,4 +1,4 @@
-from nutrition import Nutrition
+from nutrition import Macros, Nutrition
 
 
 async def test_finds_food_and_scales_to_grams():
@@ -23,3 +23,22 @@ async def test_reports_unavailable_when_api_fails(monkeypatch):
     monkeypatch.setenv("FDC_API_KEY", "invalid-key")
     result = await Nutrition().lookup("white rice cooked", 100)
     assert result == {"status": "unavailable"}
+
+
+def test_scales_macros_from_100_grams():
+    banana = Macros(calories=89, protein_g=1.09, carbs_g=22.84, fat_g=0.33)
+    assert banana.scaled(118) == Macros(calories=105.0, protein_g=1.3, carbs_g=27.0, fat_g=0.4)
+
+
+async def test_remembers_matches_by_id():
+    nutrition = Nutrition()
+    result = await nutrition.lookup("banana", 118)
+    first = result["matches"][0]
+    match = nutrition.match(first["id"])
+    assert match is not None
+    assert match.description == first["description"]
+    assert match.per_100g.scaled(118).calories == first["calories"]
+
+
+def test_unknown_match_id_is_none():
+    assert Nutrition().match(123) is None
