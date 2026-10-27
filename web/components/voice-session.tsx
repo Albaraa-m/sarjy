@@ -1,18 +1,11 @@
 "use client";
 
-import {
-  RoomAudioRenderer,
-  SessionProvider,
-  StartAudio,
-  useAgent,
-  useSession,
-} from "@livekit/components-react";
+import { RoomAudioRenderer, SessionProvider, useAgent, useSession } from "@livekit/components-react";
 import { TokenSource } from "livekit-client";
 import { useEffect, useState } from "react";
 
-import { CallControls } from "@/components/call-controls";
-import { NutritionPanel } from "@/components/nutrition-panel";
-import { SarjyAura } from "@/components/sarjy-aura";
+import { AppHeader } from "@/components/app-header";
+import { CallScreen } from "@/components/call-screen";
 import { Welcome } from "@/components/welcome";
 
 const TOKEN_SOURCE = TokenSource.endpoint("/api/token");
@@ -21,11 +14,8 @@ export function VoiceSession() {
   const [username, setUsername] = useState<string | null>(null);
 
   return (
-    <div className="flex min-h-dvh flex-col px-6 py-5">
-      <header className="flex items-center justify-between text-label">
-        <span className="font-semibold tracking-tight">Sarjy</span>
-        {username && <span className="text-fg-muted">{username}</span>}
-      </header>
+    <div className="mx-auto flex h-dvh w-full max-w-[1008px] flex-col px-6">
+      <AppHeader username={username} />
       {username ? (
         <Conversation username={username} onEnd={() => setUsername(null)} />
       ) : (
@@ -55,25 +45,23 @@ function Conversation({ username, onEnd }: ConversationProps) {
   }, [start, end]);
 
   const failure = error ?? (agent.state === "failed" ? agent.failureReasons.join(", ") : null);
+  const status = failure
+    ? { text: failure, isError: true }
+    : agent.isConnected
+      ? null
+      : { text: "Connecting…", isError: false };
 
   return (
     <SessionProvider session={session}>
       <RoomAudioRenderer />
-      <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 md:flex-row md:gap-16">
-        <section className="flex flex-col items-center gap-4">
-          <SarjyAura size="lg" state={agent.state} audioTrack={agent.microphoneTrack} />
-          {/* The Aura shows listening, thinking and speaking; text is only for what it can't. */}
-          <p className={failure ? "h-6 text-warning" : "h-6 text-fg-muted"}>
-            {failure ?? (agent.isConnected ? null : "Connecting…")}
-          </p>
-          <StartAudio
-            label="Tap to hear Sarjy"
-            className="rounded-full border border-line bg-surface px-4 py-2 text-label hover:bg-surface-hover"
-          />
-        </section>
-        <NutritionPanel attribute={agent.attributes.nutrition} />
-      </div>
-      <CallControls microphoneTrack={session.local.microphoneTrack} onEnd={onEnd} />
+      <CallScreen
+        agentState={agent.state}
+        agentTrack={agent.microphoneTrack}
+        microphoneTrack={session.local.microphoneTrack}
+        status={status}
+        nutritionAttribute={agent.attributes.nutrition}
+        onEnd={onEnd}
+      />
     </SessionProvider>
   );
 }
