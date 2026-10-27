@@ -39,7 +39,7 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
   return (
     <aside className="flex h-full w-[380px] shrink-0 flex-col border-l border-line bg-surface px-6 text-body">
       <header className="mb-3 flex h-14 shrink-0 items-center justify-between">
-        <h2 className="text-title font-semibold">Today</h2>
+        <h2 className="text-title">Today</h2>
         <span className="text-caption text-fg-faint">Daily targets</span>
       </header>
       {parsed.status === "invalid" ? (
@@ -116,7 +116,7 @@ function Calories({ eaten, target, pending }: GoalProps) {
   return (
     <section className="flex shrink-0 flex-col gap-2">
       <p className="flex items-baseline justify-between">
-        <span className="text-figure font-semibold tracking-tight">
+        <span className="text-figure">
           <AnimatedNumber value={eaten} /> <span className="text-body font-normal text-fg-muted">kcal</span>
         </span>
         <span className="text-label text-fg-muted">
