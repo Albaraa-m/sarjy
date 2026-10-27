@@ -35,3 +35,15 @@ async def test_greeting_the_assistant_is_not_the_users_name(llm, user_id, nutrit
         "Hey, Sergei. Can you help me with? What do you have to offer?",
     )
     assert memory.facts == {}
+
+
+async def test_a_changed_preference_holds_in_the_next_call(llm, user_id, nutrition_tools):
+    _, memory = await chat(llm, user_id, nutrition_tools, "I don't like milk.")
+    assert any("milk" in key for key in memory.facts)
+    _, memory = await chat(llm, user_id, nutrition_tools, "Actually, I do like milk now.")
+    assert not any("dislike" in key or "dont" in key for key in memory.facts)
+
+    result, _ = await chat(llm, user_id, nutrition_tools, "Do I like milk?")
+    reply = result.expect.next_event().is_message(role="assistant").event().item
+    answer = (reply.text_content or "").lower()
+    assert not any(negation in answer for negation in ["don't", "do not", "dislike", "not a fan"])
