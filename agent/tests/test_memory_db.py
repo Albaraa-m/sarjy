@@ -7,7 +7,7 @@ from memory.changes import Fact, MemoryChanges
 
 async def test_sets_and_removes_facts(user_id):
     await memory_db.apply_changes(
-        user_id, MemoryChanges(set=[Fact(key="dislikes_milk", value="yes")])
+        user_id, MemoryChanges(set=[Fact(key="dislikes_milk", value="yes")], remove=[])
     )
     await memory_db.apply_changes(
         user_id,
@@ -17,7 +17,9 @@ async def test_sets_and_removes_facts(user_id):
 
 
 async def test_a_failed_set_keeps_the_removed_facts(user_id):
-    await memory_db.apply_changes(user_id, MemoryChanges(set=[Fact(key="city", value="Riyadh")]))
+    await memory_db.apply_changes(
+        user_id, MemoryChanges(set=[Fact(key="city", value="Riyadh")], remove=[])
+    )
     # Postgres rejects NUL bytes in text, failing the insert after the delete ran.
     with pytest.raises(asyncpg.PostgresError):
         await memory_db.apply_changes(

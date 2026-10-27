@@ -13,8 +13,12 @@ class MemoryChanges(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    set: list[Fact] = []
-    remove: list[str] = []
+    set: list[Fact]
+    remove: list[str]
+
+    @classmethod
+    def none(cls) -> MemoryChanges:
+        return cls(set=[], remove=[])
 
     def __bool__(self) -> bool:
         return bool(self.set or self.remove)

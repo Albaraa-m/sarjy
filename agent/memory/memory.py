@@ -4,8 +4,7 @@ import logging
 from livekit.agents import AgentSession, ConversationItemAddedEvent, utils
 
 from . import db
-from .changes import Fact, MemoryChanges
-from .llm_extractor import extract_facts
+from .llm_extractor import extract_changes
 
 logger = logging.getLogger("sarjy.memory")
 
@@ -48,13 +47,10 @@ class UserMemory:
     async def _remember(self, text: str) -> None:
         async with self._lock:
             try:
-                new_facts = await extract_facts(text, self.facts)
-                if new_facts:
-                    changes = MemoryChanges(
-                        set=[Fact(key=k, value=v) for k, v in new_facts.items()]
-                    )
+                changes = await extract_changes(text, self.facts)
+                if changes:
                     await db.apply_changes(self.user_id, changes)
-                    self.facts.update(new_facts)
-                    logger.info("remembered facts: %s", new_facts)
+                    changes.apply_to(self.facts)
+                    logger.info("memory changes: %s", changes)
             except Exception:
                 logger.exception("failed to remember facts")
