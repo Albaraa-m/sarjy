@@ -18,7 +18,7 @@ const FoodEntrySchema = z.object({
 const NutritionSummarySchema = z.object({
   day: z.string(),
   entries: z.array(FoodEntrySchema),
-  pending: FoodEntrySchema.nullable(),
+  pending: z.array(FoodEntrySchema),
   totals: MacrosSchema,
   targets: MacrosSchema,
   remaining: MacrosSchema,

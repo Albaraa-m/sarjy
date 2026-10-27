@@ -46,11 +46,11 @@ function Summary({ summary }: { summary: NutritionSummary }) {
             unit={unit}
             eaten={summary.totals[key]}
             target={summary.targets[key]}
-            pending={summary.pending?.macros[key] ?? 0}
+            pending={summary.pending.reduce((sum, entry) => sum + entry.macros[key], 0)}
           />
         ))}
       </ul>
-      {summary.pending && <PendingEntry entry={summary.pending} />}
+      {summary.pending.length > 0 && <PendingFoods entries={summary.pending} />}
       <ul className="flex flex-col gap-2">
         {summary.entries.length === 0 && <li className="text-foreground/50">Nothing logged yet.</li>}
         {summary.entries.map((entry, index) => (
@@ -90,12 +90,14 @@ function MacroBar({ label, unit, eaten, target, pending }: MacroBarProps) {
   );
 }
 
-function PendingEntry({ entry }: { entry: FoodEntry }) {
+function PendingFoods({ entries }: { entries: FoodEntry[] }) {
   return (
     <div className="rounded-xl border border-dashed border-accent/50 p-3">
-      <p className="text-xs text-accent">Log this? Say yes or no.</p>
-      <ul>
-        <EntryRow entry={entry} />
+      <p className="mb-2 text-xs text-accent">Log {entries.length > 1 ? "these" : "this"}? Say yes or no.</p>
+      <ul className="flex flex-col gap-2">
+        {entries.map((entry) => (
+          <EntryRow key={entry.food} entry={entry} />
+        ))}
       </ul>
     </div>
   );
