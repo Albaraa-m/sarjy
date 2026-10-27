@@ -40,6 +40,8 @@ async def entrypoint(ctx: JobContext):
 
     nutrition = Nutrition()
     food_log = await FoodLog.load(user_id, nutrition, on_change=show_food_log)
+    # Before the voice session starts, so the panel fills in as Sarjy joins, not seconds later.
+    await show_food_log(food_log.summary())
 
     # VAD (Silero) and turn detection (LiveKit turn detector) use framework defaults.
     session = AgentSession(
@@ -68,4 +70,3 @@ async def entrypoint(ctx: JobContext):
     memory.listen(session)
     diagnostics.watch(session)
     await session.start(agent=Sarjy(memory, NutritionTools(nutrition, food_log)), room=ctx.room)
-    await show_food_log(food_log.summary())
