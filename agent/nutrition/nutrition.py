@@ -7,7 +7,7 @@ from . import usda
 
 logger = logging.getLogger("sarjy.nutrition")
 
-# USDA nutrient numbers; SR Legacy foods report every nutrient per 100 g.
+# USDA nutrient numbers; SR Legacy and FNDDS foods report every nutrient per 100 g.
 NUTRIENTS = {"208": "calories", "203": "protein_g", "205": "carbs_g", "204": "fat_g"}
 
 

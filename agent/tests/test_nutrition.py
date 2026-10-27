@@ -8,6 +8,12 @@ async def test_finds_food_and_scales_to_grams():
     assert max(match["protein_g"] for match in result["matches"]) > 40
 
 
+async def test_finds_prepared_dishes():
+    result = await Nutrition().lookup("beef and bean burrito", 250)
+    assert result["status"] == "found"
+    assert any("burrito" in match["description"].lower() for match in result["matches"])
+
+
 async def test_reports_food_not_in_database():
     result = await Nutrition().lookup("kabsa", 300)
     assert result == {"status": "not_found"}
