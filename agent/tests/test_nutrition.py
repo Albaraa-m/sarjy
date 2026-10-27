@@ -42,3 +42,10 @@ async def test_remembers_matches_by_id():
 
 def test_unknown_match_id_is_none():
     assert Nutrition().match(123) is None
+
+
+async def test_prefers_sr_legacy_when_both_datasets_match():
+    # A 118 g banana was spoken as 105 kcal (SR Legacy) but logged as 115 (FNDDS "Banana, raw").
+    result = await Nutrition().lookup("bananas raw", 118)
+    assert result["matches"][0]["description"] == "Bananas, raw"
+    assert result["matches"][0]["calories"] == 105.0

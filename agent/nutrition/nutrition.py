@@ -69,6 +69,9 @@ class Nutrition:
         logger.info("USDA lookup %r: %d matches in %d ms", food, len(foods), _ms_since(start))
         if not foods:
             return {"status": "not_found"}
+        # SR Legacy first: for common foods both datasets match ("Bananas, raw" at 89 kcal/100 g,
+        # "Banana, raw" at 97), and the LLM tends to quote one and log the other.
+        foods.sort(key=lambda food_item: food_item["dataType"] != "SR Legacy")
         matches = [_food_match(food_item) for food_item in foods]
         self._matches.update({match.id: match for match in matches})
         return {
