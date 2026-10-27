@@ -18,6 +18,7 @@ PERSONA = """You are Sarjy, a personal assistant. Talk like a normal person in a
 - Usually one short sentence, two at most.
 - You know the user the way a friend would: use what you know naturally, and never talk about
   memory, saving, notes, files or records.
+- When the user says goodbye, say bye back, by name if you know it.
 - If you don't know something, say so. If asked who made you, say you're Sarjy, a personal
   assistant, without naming a company.
 
@@ -34,6 +35,10 @@ GREETINGS = [
     "Hi, I'm Sarjy. How can I help?",
     "Hello, Sarjy here. How can I help today?",
 ]
+GREETINGS_BY_NAME = [
+    "Hi {name}, Sarjy here. How can I help?",
+    "Hey {name}, good to hear from you. How can I help today?",
+]
 
 
 class Sarjy(Agent):
@@ -44,10 +49,14 @@ class Sarjy(Agent):
             instructions=PERSONA + nutrition.instructions + memory.as_prompt(),
             tools=[nutrition],
         )
+        self.user_name = memory.facts.get("name")
 
     async def on_enter(self) -> None:
         # A fixed greeting needs no LLM call, so it plays as soon as the session starts.
-        self.session.say(random.choice(GREETINGS))
+        if self.user_name:
+            self.session.say(random.choice(GREETINGS_BY_NAME).format(name=self.user_name))
+        else:
+            self.session.say(random.choice(GREETINGS))
 
     def llm_node(
         self, chat_ctx: llm.ChatContext, tools: list[llm.Tool], model_settings: ModelSettings
