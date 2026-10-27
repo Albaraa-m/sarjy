@@ -1,23 +1,10 @@
 @import "tailwindcss";
+@import "./design-tokens.css";
 
 /* Always dark: the Aura and Wave visualizers glow only on a dark background. */
-:root {
-  --background: #07080a;
-  --foreground: #ededed;
-  --accent: #1fd5f9;
-  --danger: #f43f5e;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
-  --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: linear-gradient(to bottom, var(--color-canvas-raised), var(--color-canvas) 60%);
+  color: var(--color-fg);
   color-scheme: dark;
+  font-variant-numeric: tabular-nums;
 }

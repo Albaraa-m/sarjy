@@ -21,14 +21,14 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
   const parsed = parseNutritionSummary(attribute);
 
   return (
-    <aside className="w-full max-w-sm rounded-2xl bg-white/5 p-5 text-sm">
+    <aside className="max-h-full overflow-y-auto rounded-card border border-line bg-surface p-6 text-body">
       <header className="mb-4 flex items-baseline justify-between">
-        <h2 className="font-semibold">Today</h2>
-        <span className="text-xs text-foreground/50">Daily targets</span>
+        <h2 className="text-title font-semibold">Today</h2>
+        <span className="text-caption text-fg-faint">Daily targets</span>
       </header>
-      {parsed.status === "waiting" && <p className="text-foreground/50">Loading today…</p>}
+      {parsed.status === "waiting" && <p className="text-fg-muted">Loading today…</p>}
       {parsed.status === "invalid" && (
-        <p className="text-danger">Couldn&apos;t read today&apos;s log: {parsed.error}</p>
+        <p className="text-warning">Couldn&apos;t read today&apos;s log: {parsed.error}</p>
       )}
       {parsed.status === "ok" && <Summary summary={parsed.summary} />}
     </aside>
@@ -52,7 +52,7 @@ function Summary({ summary }: { summary: NutritionSummary }) {
       </ul>
       {summary.pending.length > 0 && <PendingFoods entries={summary.pending} />}
       <ul className="flex flex-col gap-2">
-        {summary.entries.length === 0 && <li className="text-foreground/50">Nothing logged yet.</li>}
+        {summary.entries.length === 0 && <li className="text-fg-muted">Nothing logged yet.</li>}
         {summary.entries.map((entry, index) => (
           <EntryRow key={`${index}-${entry.food}`} entry={entry} />
         ))}
@@ -77,14 +77,14 @@ function MacroBar({ label, unit, eaten, target, pending }: MacroBarProps) {
     <li className="flex flex-col gap-1">
       <div className="flex justify-between">
         <span>{label}</span>
-        <span className="tabular-nums text-foreground/60">
+        <span className="text-fg-muted">
           {Math.round(eaten)} / {Math.round(target)} {unit}
         </span>
       </div>
-      <div className="flex h-2 overflow-hidden rounded-full bg-white/10">
+      <div className="flex h-1.5 overflow-hidden rounded-full bg-inset">
         <div className="bg-accent transition-all" style={{ width: `${eatenWidth}%` }} />
         {/* What's still waiting for a "yes", so the user sees the effect before confirming. */}
-        <div className="bg-accent/35 transition-all" style={{ width: `${pendingWidth}%` }} />
+        <div className="bg-accent-soft transition-all" style={{ width: `${pendingWidth}%` }} />
       </div>
     </li>
   );
@@ -92,8 +92,8 @@ function MacroBar({ label, unit, eaten, target, pending }: MacroBarProps) {
 
 function PendingFoods({ entries }: { entries: FoodEntry[] }) {
   return (
-    <div className="rounded-xl border border-dashed border-accent/50 p-3">
-      <p className="mb-2 text-xs text-accent">Log {entries.length > 1 ? "these" : "this"}? Say yes or no.</p>
+    <div className="rounded-control border border-dashed border-accent p-3">
+      <p className="mb-2 text-caption text-fg">Log {entries.length > 1 ? "these" : "this"}? Say yes or no.</p>
       <ul className="flex flex-col gap-2">
         {entries.map((entry) => (
           <EntryRow key={entry.food} entry={entry} />
@@ -108,11 +108,11 @@ function EntryRow({ entry }: { entry: FoodEntry }) {
     <li className="flex items-center justify-between gap-3">
       <span className="truncate">
         {entry.display_name}
-        <span className="text-foreground/50"> · {Math.round(entry.grams)} g</span>
+        <span className="text-fg-faint"> · {Math.round(entry.grams)} g</span>
       </span>
-      <span className="flex shrink-0 items-center gap-2 tabular-nums">
+      <span className="flex shrink-0 items-center gap-2">
         {entry.source === "estimate" && (
-          <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-300">
+          <span className="rounded-full bg-inset px-2 py-0.5 text-caption text-fg-muted">
             estimate
           </span>
         )}

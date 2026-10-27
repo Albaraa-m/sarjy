@@ -22,9 +22,9 @@ export function VoiceSession() {
 
   return (
     <div className="flex min-h-dvh flex-col px-6 py-5">
-      <header className="flex items-center justify-between text-sm">
+      <header className="flex items-center justify-between text-label">
         <span className="font-semibold tracking-tight">Sarjy</span>
-        {username && <span className="text-foreground/50">{username}</span>}
+        {username && <span className="text-fg-muted">{username}</span>}
       </header>
       {username ? (
         <Conversation username={username} onEnd={() => setUsername(null)} />
@@ -63,12 +63,12 @@ function Conversation({ username, onEnd }: ConversationProps) {
         <section className="flex flex-col items-center gap-4">
           <SarjyAura size="lg" state={agent.state} audioTrack={agent.microphoneTrack} />
           {/* The Aura shows listening, thinking and speaking; text is only for what it can't. */}
-          <p className={failure ? "h-6 text-danger" : "h-6 text-foreground/60"}>
+          <p className={failure ? "h-6 text-warning" : "h-6 text-fg-muted"}>
             {failure ?? (agent.isConnected ? null : "Connecting…")}
           </p>
           <StartAudio
             label="Tap to hear Sarjy"
-            className="rounded-full bg-white/10 px-5 py-2 text-sm hover:bg-white/15"
+            className="rounded-full border border-line bg-surface px-4 py-2 text-label hover:bg-surface-hover"
           />
         </section>
         <NutritionPanel attribute={agent.attributes.nutrition} />

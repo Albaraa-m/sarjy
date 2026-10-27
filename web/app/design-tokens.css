@@ -1,0 +1,46 @@
+/* Sarjy's design tokens: every color, type size, radius and motion value the UI uses.
+   Tailwind's default palette, sizes and radii are cleared, so classes can only use these. */
+@theme static {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  /* Near-black canvas with charcoal surfaces; one purple accent, one muted amber for warnings. */
+  --color-canvas: #0b0b0d;
+  --color-canvas-raised: #121216;
+  --color-surface: #16161a;
+  --color-surface-hover: #1e1e23;
+  --color-inset: #0f0f12;
+  --color-line: #ffffff12;
+  --color-line-strong: #ffffff21;
+  --color-fg: #ededf0;
+  --color-fg-muted: #9b9ba6;
+  --color-fg-faint: #63636e;
+  --color-accent: #7c6cf2;
+  --color-accent-soft: #7c6cf229;
+  --color-warning: #d4a35a;
+  --color-warning-soft: #d4a35a24;
+
+  --font-sans: var(--font-geist-sans);
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.125rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-title: 0.9375rem;
+  --text-title--line-height: 1.375rem;
+  --text-figure: 1.5rem;
+  --text-figure--line-height: 1.75rem;
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.125rem;
+
+  --spacing: 0.25rem;
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+
+  --ease-quiet: cubic-bezier(0.2, 0, 0, 1);
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: var(--ease-quiet);
+}

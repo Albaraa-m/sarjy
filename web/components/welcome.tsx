@@ -19,13 +19,13 @@ export function Welcome({ onStart }: WelcomeProps) {
   }
 
   return (
-    <section className="flex flex-1 flex-col items-center justify-center gap-8">
-      <SarjyAura size="lg" state="idle" />
+    <section className="flex flex-1 flex-col items-center justify-center gap-6 pb-14">
+      <SarjyAura size="xl" state="idle" className="-mt-14 -mb-20" />
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">Talk to Sarjy</h1>
-        <p className="text-foreground/60">Your voice assistant. Just speak.</p>
+        <h1 className="text-display font-semibold tracking-tight">Talk to Sarjy</h1>
+        <p className="text-body text-fg-muted">Your voice assistant. Just speak.</p>
       </div>
-      <form onSubmit={submit} className="flex w-full max-w-xs flex-col gap-3">
+      <form onSubmit={submit} className="mt-2 flex w-full max-w-xs flex-col gap-2">
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -33,17 +33,17 @@ export function Welcome({ onStart }: WelcomeProps) {
           aria-label="Your name"
           autoComplete="given-name"
           autoFocus
-          className="h-12 rounded-full border border-white/10 bg-white/5 px-5 text-center outline-none transition placeholder:text-foreground/40 focus:border-accent/60"
+          className="h-11 rounded-control border border-line bg-surface px-4 text-center text-body outline-none transition placeholder:text-fg-faint focus:border-accent"
         />
         <button
           type="submit"
           disabled={!USERNAME_PATTERN.test(username)}
-          className="h-12 rounded-full bg-accent font-medium text-background transition hover:opacity-90 disabled:opacity-30"
+          className="h-11 rounded-control bg-accent text-body font-medium text-fg transition hover:opacity-90 disabled:opacity-35"
         >
           Start talking
         </button>
       </form>
-      <p className="text-xs text-foreground/40">Uses your microphone.</p>
+      <p className="text-caption text-fg-faint">Uses your microphone.</p>
     </section>
   );
 }
