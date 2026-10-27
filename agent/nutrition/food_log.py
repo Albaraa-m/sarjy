@@ -1,5 +1,6 @@
+import json
 from collections.abc import Awaitable, Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
@@ -21,6 +22,9 @@ class DaySummary:
     targets: Macros
     remaining: Macros
 
+    def to_json(self) -> str:
+        """The shape the web "Today" panel parses (web/lib/parse-nutrition-summary.ts)."""
+        return json.dumps({**asdict(self), "day": self.day.isoformat()})
 
 
 class FoodLog:

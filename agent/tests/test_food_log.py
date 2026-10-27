@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, date, datetime
 
 import pytest
@@ -104,6 +105,28 @@ async def test_reports_every_change(food_log, changes):
 def test_today_is_the_riyadh_day():
     assert riyadh_day(datetime(2026, 10, 27, 20, 30, tzinfo=UTC)) == date(2026, 10, 27)
     assert riyadh_day(datetime(2026, 10, 27, 21, 30, tzinfo=UTC)) == date(2026, 10, 28)
+
+
+def test_summary_json_shape():
+    banana = FoodEntry("Bananas, raw", 118, Macros(105, 1.3, 27, 0.4), "usda")
+    summary = DaySummary(
+        date(2026, 10, 27), [banana], None, banana.macros, DAILY_TARGETS, DAILY_TARGETS
+    )
+    assert json.loads(summary.to_json()) == {
+        "day": "2026-10-27",
+        "entries": [
+            {
+                "food": "Bananas, raw",
+                "grams": 118,
+                "macros": {"calories": 105, "protein_g": 1.3, "carbs_g": 27, "fat_g": 0.4},
+                "source": "usda",
+            }
+        ],
+        "pending": None,
+        "totals": {"calories": 105, "protein_g": 1.3, "carbs_g": 27, "fat_g": 0.4},
+        "targets": {"calories": 2200, "protein_g": 150, "carbs_g": 220, "fat_g": 70},
+        "remaining": {"calories": 2200, "protein_g": 150, "carbs_g": 220, "fat_g": 70},
+    }
 
 
 async def test_load_starts_from_todays_saved_foods(user_id):

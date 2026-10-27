@@ -6,7 +6,7 @@ from livekit.plugins import cartesia, deepgram, groq, openai
 
 import diagnostics
 from memory import UserMemory
-from nutrition import Nutrition, NutritionTools
+from nutrition import DaySummary, FoodLog, Nutrition, NutritionTools
 from sarjy import Sarjy
 
 load_dotenv()
@@ -34,6 +34,13 @@ async def entrypoint(ctx: JobContext):
     # Let the last turns finish saving before the job exits.
     ctx.add_shutdown_callback(memory.wait_for_pending)
 
+    async def show_food_log(summary: DaySummary) -> None:
+        # The web "Today" panel renders this attribute; a browser that (re)joins gets the latest.
+        await ctx.room.local_participant.set_attributes({"nutrition": summary.to_json()})
+
+    nutrition = Nutrition()
+    food_log = await FoodLog.load(user_id, nutrition, on_change=show_food_log)
+
     # VAD (Silero) and turn detection (LiveKit turn detector) use framework defaults.
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", keyterm=["Sarjy"]),
@@ -57,4 +64,5 @@ async def entrypoint(ctx: JobContext):
     )
     memory.listen(session)
     diagnostics.watch(session)
-    await session.start(agent=Sarjy(memory, NutritionTools(Nutrition())), room=ctx.room)
+    await session.start(agent=Sarjy(memory, NutritionTools(nutrition)), room=ctx.room)
+    await show_food_log(food_log.summary())
