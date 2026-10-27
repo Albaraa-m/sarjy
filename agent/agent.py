@@ -1,5 +1,4 @@
 import logging
-import os
 
 from dotenv import load_dotenv
 from livekit.agents import AgentServer, AgentSession, JobContext, llm
@@ -15,6 +14,9 @@ load_dotenv()
 logger = logging.getLogger("sarjy")
 
 server = AgentServer()
+
+# Cartesia's "Layan" voice.
+VOICE_ID = "64a941ac-07ac-462c-a81c-008e353dd83e"
 
 
 async def get_user_id(ctx: JobContext) -> str:
@@ -42,7 +44,7 @@ async def entrypoint(ctx: JobContext):
                 groq.LLM(model="openai/gpt-oss-120b", reasoning_effort="low"),
             ]
         ),
-        tts=cartesia.TTS(model="sonic-3.6", voice=os.environ["CARTESIA_VOICE_ID"]),
+        tts=cartesia.TTS(model="sonic-3.6", voice=VOICE_ID),
         # Wait a bit longer than the 0.5 s default before ending the user's turn, so pauses
         # mid-sentence ("I ate rice... and chicken") don't make Sarjy talk over the user.
         turn_handling={"endpointing": {"min_delay": 0.8}},
