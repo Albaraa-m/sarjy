@@ -34,7 +34,18 @@ Sarjy: Yeah, really good. USDA says about 23 grams a cup, so almost a fifth of y
 
 # Said only when a lookup is slow, so quick answers come without filler.
 FILLER_DELAY = 0.6
-FILLERS = ["Let me look that up.", "One sec.", "Checking the numbers.", "Let me see."]
+# After a filler, answer no sooner than this, so it sounds like Sarjy actually looked it up.
+MIN_LOOKUP_AFTER_FILLER = 1.2
+FILLERS = [
+    "Hmm, let me check.",
+    "Oh, one sec.",
+    "Let me pull that up.",
+    "Good question, one sec.",
+    "Hang on, checking.",
+    "Let me see.",
+    "Uh, give me a sec.",
+    "Okay, looking it up.",
+]
 
 
 class NutritionTools(llm.Toolset):
@@ -61,4 +72,5 @@ class NutritionTools(llm.Toolset):
         if not done and (self._filler is None or self._filler.done()):
             # Kept out of the chat history: the LLM should answer, not continue the filler.
             self._filler = context.session.say(random.choice(FILLERS), add_to_chat_ctx=False)
+            await asyncio.sleep(MIN_LOOKUP_AFTER_FILLER)
         return await lookup
