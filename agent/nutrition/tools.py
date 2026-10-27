@@ -36,13 +36,15 @@ Sarjy: Yeah, really good. USDA says about 23 grams a cup, so almost a fifth of y
 
 - Food log: what the user ate today, against daily targets.
 Log only when the user says they ate or had something; a question is just a lookup. To log: look
-the food up, pick the match that fits, and call prepare_food_log with its id in the same turn,
-before you ask anything: the user sees the pending entry on screen while you read back the food,
-amount and calories and ask whether to log it. Save with confirm_food_log only after a clear yes;
-on no, call cancel_food_log; if they change the food or amount, prepare it again. For a countable
-food (a banana, a burrito) assume a normal one and say so; otherwise ask how much. If USDA doesn't
-have it, prepare your own estimate with prepare_estimated_food_log and say it's an estimate.
-For anything about what they've eaten or have left today, call get_daily_totals first.
+up every food they name, pick the match that fits each, and call prepare_food_log once per food in
+the same turn, before you ask anything: the user sees the pending foods on screen while you read
+them back as one short list with the total calories and ask whether to log them. One clear yes
+saves them all with confirm_food_log; on no, call cancel_food_log; to drop one food ("but no
+milk"), cancel it by name, then confirm the rest; if they change a food or amount, prepare it
+again. For a countable food (a banana, a burrito) assume a normal one and say so; otherwise ask
+how much. If USDA doesn't have it, prepare your own estimate with prepare_estimated_food_log, also
+before asking, and say it's an estimate. For anything about what they've eaten or have left today, call
+get_daily_totals first.
 
 Examples:
 User: I had a banana this morning
@@ -50,6 +52,9 @@ Sarjy: A medium banana, about 105 calories per USDA. Want me to log it?
 
 User: yes
 Sarjy: Done, you're at 1,200 of 2,200 calories today.
+
+User: breakfast was three eggs, two slices of toast and a cup of milk
+Sarjy: Three eggs, two slices of toast and a cup of milk, about 540 calories per USDA. Log all of it?
 
 User: I ate a plate of kabsa
 Sarjy: USDA doesn't have kabsa, so my estimate for a normal plate is about 700 calories. Log that?"""
@@ -100,9 +105,9 @@ class NutritionTools(llm.Toolset):
 
     @function_tool
     async def prepare_food_log(self, match_id: int, grams: float) -> dict:
-        """Proposes logging a food the user ate, using a match from lookup_nutrition. Call it
-        right after the lookup, before asking whether to log it. Nothing is saved until
-        confirm_food_log; the user sees it as pending.
+        """Proposes logging one food the user ate, using a match from lookup_nutrition; call it
+        once per food, right after the lookups, before asking whether to log them. Nothing is
+        saved until confirm_food_log; the user sees the foods as pending.
 
         Args:
             match_id: The id of the lookup_nutrition match that fits what the user ate.
@@ -143,17 +148,22 @@ class NutritionTools(llm.Toolset):
 
     @function_tool
     async def confirm_food_log(self) -> dict:
-        """Saves the pending food. Call only after the user clearly says yes to logging it."""
+        """Saves all pending foods. Call only after the user clearly says yes to logging them."""
         summary = await self.food_log.confirm()
         if summary is None:
             return {"status": "nothing_pending"}
         return {"status": "saved", **_day(summary)}
 
     @function_tool
-    async def cancel_food_log(self) -> dict:
-        """Drops the pending food when the user doesn't want it logged."""
-        await self.food_log.cancel()
-        return {"status": "cancelled"}
+    async def cancel_food_log(self, food: str = "") -> dict:
+        """Drops pending foods the user doesn't want logged.
+
+        Args:
+            food: The pending food's name, exactly as prepare_food_log returned it, to drop just
+                that one; empty to drop all pending foods.
+        """
+        summary = await self.food_log.cancel(food or None)
+        return {"status": "cancelled", "pending": [entry.food for entry in summary.pending]}
 
     @function_tool
     async def get_daily_totals(self) -> dict:
