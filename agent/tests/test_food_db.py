@@ -4,8 +4,8 @@ from nutrition import FoodEntry, Macros
 from nutrition import db as nutrition_db
 
 TODAY = date(2026, 10, 27)
-BANANA = FoodEntry("banana", 118, Macros(105, 1.3, 27, 0.4), "usda")
-KABSA = FoodEntry("chicken kabsa", 400, Macros(700, 40, 80, 20), "estimate")
+BANANA = FoodEntry("Bananas, raw", "Banana", 118, Macros(105, 1.3, 27, 0.4), "usda")
+KABSA = FoodEntry("Chicken kabsa", "Chicken kabsa", 400, Macros(700, 40, 80, 20), "estimate")
 
 
 async def test_returns_the_days_foods_in_order(user_id):

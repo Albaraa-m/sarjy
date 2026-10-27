@@ -58,16 +58,18 @@ class FoodLog:
         day = today()
         return cls(user_id, nutrition, on_change, day, await db.foods_on(user_id, day))
 
-    async def prepare(self, match_id: int, grams: float) -> DaySummary | None:
+    async def prepare(self, match_id: int, grams: float, display_name: str) -> DaySummary | None:
         """Adds a looked-up USDA food to the pending foods. None if that id was never looked up."""
         match = self.nutrition.match(match_id)
         if match is None:
             return None
-        entry = FoodEntry(match.description, grams, match.per_100g.scaled(grams), "usda")
-        return await self._add_pending(entry)
+        macros = match.per_100g.scaled(grams)
+        return await self._add_pending(
+            FoodEntry(match.description, display_name, grams, macros, "usda")
+        )
 
     async def prepare_estimate(self, food: str, grams: float, macros: Macros) -> DaySummary:
-        return await self._add_pending(FoodEntry(food, grams, macros, "estimate"))
+        return await self._add_pending(FoodEntry(food, food, grams, macros, "estimate"))
 
     async def confirm(self) -> DaySummary | None:
         """Saves all pending foods. None if nothing is pending, so a repeated yes can't save twice.

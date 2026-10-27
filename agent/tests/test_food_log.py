@@ -34,9 +34,9 @@ async def food_log(user_id, changes) -> FoodLog:
 
 
 async def prepare_breakfast(food_log: FoodLog) -> None:
-    await food_log.prepare(EGGS.id, 150)
-    await food_log.prepare(TOAST.id, 60)
-    await food_log.prepare(MILK.id, 244)
+    await food_log.prepare(EGGS.id, 150, "Scrambled eggs")
+    await food_log.prepare(TOAST.id, 60, "Toast")
+    await food_log.prepare(MILK.id, 244, "Milk")
 
 
 def foods(entries: list[FoodEntry]) -> list[str]:
@@ -57,16 +57,16 @@ async def test_parallel_prepares_all_stay_pending(food_log):
     # In a live call the LLM prepared eggs, toast and milk at once; with a single pending slot
     # only the last one survived.
     await asyncio.gather(
-        food_log.prepare(EGGS.id, 150),
-        food_log.prepare(TOAST.id, 60),
-        food_log.prepare(MILK.id, 244),
+        food_log.prepare(EGGS.id, 150, "Scrambled eggs"),
+        food_log.prepare(TOAST.id, 60, "Toast"),
+        food_log.prepare(MILK.id, 244, "Milk"),
     )
     assert len(food_log.summary().pending) == 3
 
 
 async def test_preparing_a_pending_food_again_replaces_it(food_log):
     await prepare_breakfast(food_log)
-    await food_log.prepare(EGGS.id, 100)
+    await food_log.prepare(EGGS.id, 100, "Scrambled eggs")
     pending = food_log.summary().pending
     assert foods(pending) == [TOAST.description, MILK.description, EGGS.description]
     assert pending[-1].grams == 100
@@ -133,7 +133,14 @@ async def test_cancel_all(food_log, user_id):
 
 
 async def test_unknown_food_id_is_rejected(food_log):
-    assert await food_log.prepare(999, 100) is None
+    assert await food_log.prepare(999, 100, "Mystery") is None
+
+
+async def test_display_name_is_saved(food_log, user_id):
+    await food_log.prepare(MILK.id, 244, "Milk")
+    await food_log.confirm()
+    [saved] = await nutrition_db.foods_on(user_id, today())
+    assert (saved.food, saved.display_name) == (MILK.description, "Milk")
 
 
 async def test_estimate_is_saved_as_estimate(food_log, user_id):
@@ -145,8 +152,8 @@ async def test_estimate_is_saved_as_estimate(food_log, user_id):
 
 
 async def test_totals_and_remaining(food_log):
-    await food_log.prepare(EGGS.id, 100)
-    await food_log.prepare(MILK.id, 100)
+    await food_log.prepare(EGGS.id, 100, "Scrambled eggs")
+    await food_log.prepare(MILK.id, 100, "Milk")
     summary = await food_log.confirm()
     assert summary is not None
     assert summary.totals == Macros(210, 13.2, 6.4, 14.3)
@@ -154,16 +161,16 @@ async def test_totals_and_remaining(food_log):
 
 
 async def test_reports_every_change(food_log, changes):
-    await food_log.prepare(EGGS.id, 150)
-    await food_log.prepare(MILK.id, 244)
+    await food_log.prepare(EGGS.id, 150, "Scrambled eggs")
+    await food_log.prepare(MILK.id, 244, "Milk")
     await food_log.confirm()
-    await food_log.prepare(TOAST.id, 60)
+    await food_log.prepare(TOAST.id, 60, "Toast")
     await food_log.cancel()
     assert [len(summary.pending) for summary in changes] == [1, 2, 0, 1, 0]
 
 
 async def test_load_starts_from_todays_saved_foods(user_id):
-    milk = FoodEntry(MILK.description, 244, MILK.per_100g.scaled(244), "usda")
+    milk = FoodEntry(MILK.description, "Milk", 244, MILK.per_100g.scaled(244), "usda")
     await nutrition_db.add_foods(user_id, today(), [milk])
 
     async def ignore(summary: DaySummary) -> None:
@@ -179,7 +186,7 @@ def test_today_is_the_riyadh_day():
 
 
 def test_summary_json_shape():
-    milk = FoodEntry("Milk, whole", 244, Macros(149, 7.8, 11.7, 8.1), "usda")
+    milk = FoodEntry("Milk, whole", "Milk", 244, Macros(149, 7.8, 11.7, 8.1), "usda")
     summary = DaySummary(
         date(2026, 10, 27), [], [milk], Macros(0, 0, 0, 0), DAILY_TARGETS, DAILY_TARGETS
     )
@@ -189,6 +196,7 @@ def test_summary_json_shape():
         "pending": [
             {
                 "food": "Milk, whole",
+                "display_name": "Milk",
                 "grams": 244,
                 "macros": {"calories": 149, "protein_g": 7.8, "carbs_g": 11.7, "fat_g": 8.1},
                 "source": "usda",

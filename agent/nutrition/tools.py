@@ -104,7 +104,7 @@ class NutritionTools(llm.Toolset):
         return await lookup
 
     @function_tool
-    async def prepare_food_log(self, match_id: int, grams: float) -> dict:
+    async def prepare_food_log(self, match_id: int, grams: float, name: str) -> dict:
         """Proposes logging one food the user ate, using a match from lookup_nutrition; call it
         once per food, right after the lookups, before asking whether to log them. Nothing is
         saved until confirm_food_log; the user sees the foods as pending.
@@ -112,8 +112,10 @@ class NutritionTools(llm.Toolset):
         Args:
             match_id: The id of the lookup_nutrition match that fits what the user ate.
             grams: The amount the user ate, in grams.
+            name: The food as the user would say it, shown on screen, in sentence case, e.g.
+                "Banana", "Big Mac", "Beef burrito"; never USDA's description.
         """
-        summary = await self.food_log.prepare(match_id, grams)
+        summary = await self.food_log.prepare(match_id, grams, name)
         if summary is None:
             return {
                 "status": "unknown_food",
@@ -135,7 +137,7 @@ class NutritionTools(llm.Toolset):
         Saved only after confirm_food_log, and marked as an estimate.
 
         Args:
-            food: What the user ate, e.g. "chicken kabsa".
+            food: What the user ate, shown on screen, in sentence case, e.g. "Chicken kabsa".
             grams: The amount the user ate, in grams.
             calories: Your estimate for that amount.
             protein_g: Your estimate for that amount.

@@ -14,6 +14,7 @@ create table if not exists food_log (
     user_id    text             not null,
     eaten_on   date             not null,
     food       text             not null,
+    display_name text,                    -- what the UI shows; null on rows saved before it existed
     grams      double precision not null,
     calories   double precision not null,
     protein_g  double precision not null,
@@ -23,3 +24,4 @@ create table if not exists food_log (
     created_at timestamptz      not null default now()
 );
 create index if not exists food_log_user_day on food_log (user_id, eaten_on);
+alter table food_log add column if not exists display_name text;

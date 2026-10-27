@@ -46,6 +46,8 @@ class FoodEntry:
     """One food portion the user ate, with its macros for that portion."""
 
     food: str
+    # What the UI shows: "Banana", not USDA's "Bananas, raw".
+    display_name: str
     grams: float
     macros: Macros
     source: Source
