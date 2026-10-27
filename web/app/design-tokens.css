@@ -19,6 +19,8 @@
   --color-fg-faint: #63636e;
   --color-accent: #7c6cf2;
   --color-accent-soft: #7c6cf229;
+  --color-accent-faint: #7c6cf20f;
+  --color-accent-line: #7c6cf259;
   --color-warning: #d4a35a;
   --color-warning-soft: #d4a35a24;
 
@@ -37,6 +39,7 @@
   --text-display--line-height: 2.125rem;
 
   --spacing: 0.25rem;
+  --radius-tag: 0.3125rem;
   --radius-control: 0.625rem;
   --radius-card: 1rem;
 

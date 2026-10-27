@@ -4,13 +4,15 @@ import {
   type NutritionSummary,
   parseNutritionSummary,
 } from "@/lib/parse-nutrition-summary";
+import { cn } from "@/lib/utils";
 
-const MACRO_ROWS = [
-  { key: "calories", label: "Calories", unit: "kcal" },
-  { key: "protein_g", label: "Protein", unit: "g" },
-  { key: "carbs_g", label: "Carbs", unit: "g" },
-  { key: "fat_g", label: "Fat", unit: "g" },
-] as const satisfies readonly { key: keyof Macros; label: string; unit: string }[];
+const WHOLE_NUMBER = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+const MACROS = [
+  { key: "protein_g", label: "Protein" },
+  { key: "carbs_g", label: "Carbs" },
+  { key: "fat_g", label: "Fat" },
+] as const satisfies readonly { key: keyof Macros; label: string }[];
 
 type NutritionPanelProps = {
   /** The agent's `nutrition` participant attribute (a JSON day summary). */
@@ -21,8 +23,8 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
   const parsed = parseNutritionSummary(attribute);
 
   return (
-    <aside className="max-h-full overflow-y-auto rounded-card border border-line bg-surface p-6 text-body">
-      <header className="mb-4 flex items-baseline justify-between">
+    <aside className="flex max-h-full flex-col self-start rounded-card border border-line bg-surface px-6 pt-6 text-body">
+      <header className="mb-5 flex items-baseline justify-between">
         <h2 className="text-title font-semibold">Today</h2>
         <span className="text-caption text-fg-faint">Daily targets</span>
       </header>
@@ -36,65 +38,130 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
 }
 
 function Summary({ summary }: { summary: NutritionSummary }) {
+  const pending = (key: keyof Macros) =>
+    summary.pending.reduce((sum, entry) => sum + entry.macros[key], 0);
+  // Newest first, where a food just confirmed from the pending box appears.
+  const newestFirst = summary.entries.map((entry, index) => ({ entry, index })).reverse();
+
   return (
-    <div className="flex flex-col gap-5">
-      <ul className="flex flex-col gap-3">
-        {MACRO_ROWS.map(({ key, label, unit }) => (
-          <MacroBar
+    <div className="flex min-h-0 flex-col gap-6">
+      <Calories
+        eaten={summary.totals.calories}
+        target={summary.targets.calories}
+        pending={pending("calories")}
+      />
+      <div className="grid shrink-0 grid-cols-3 gap-4">
+        {MACROS.map(({ key, label }) => (
+          <Macro
             key={key}
             label={label}
-            unit={unit}
             eaten={summary.totals[key]}
             target={summary.targets[key]}
-            pending={summary.pending.reduce((sum, entry) => sum + entry.macros[key], 0)}
+            pending={pending(key)}
           />
         ))}
-      </ul>
+      </div>
       {summary.pending.length > 0 && <PendingFoods entries={summary.pending} />}
-      <ul className="flex flex-col gap-2">
-        {summary.entries.length === 0 && <li className="text-fg-muted">Nothing logged yet.</li>}
-        {summary.entries.map((entry, index) => (
-          <EntryRow key={`${index}-${entry.food}`} entry={entry} />
-        ))}
-      </ul>
+      {summary.entries.length === 0 && summary.pending.length === 0 ? (
+        <EmptyLog />
+      ) : (
+        <div className="-mt-6 flex min-h-0 flex-col">
+          {/* Scrolls on its own, fading out at the bottom, so the totals above stay in view. */}
+          <ul className="mt-6 min-h-0 divide-y divide-line overflow-y-auto border-t border-line pb-8 [mask-image:linear-gradient(to_bottom,black_calc(100%-2.5rem),transparent)]">
+            {newestFirst.map(({ entry, index }) => (
+              <EntryRow
+                key={`${index}-${entry.food}`}
+                entry={entry}
+              />
+            ))}
+          </ul>
+          <p className="shrink-0 py-3 text-caption text-fg-faint">
+            {summary.entries.length} {summary.entries.length === 1 ? "food" : "foods"} logged today
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-type MacroBarProps = {
-  label: string;
-  unit: string;
+type GoalProps = {
   eaten: number;
   target: number;
   pending: number;
 };
 
-function MacroBar({ label, unit, eaten, target, pending }: MacroBarProps) {
-  const eatenWidth = Math.min(eaten / target, 1) * 100;
-  const pendingWidth = Math.min(pending / target, 1 - eatenWidth / 100) * 100;
+function Calories({ eaten, target, pending }: GoalProps) {
+  return (
+    <section className="flex shrink-0 flex-col gap-2">
+      <p className="flex items-baseline justify-between">
+        <span className="text-figure font-semibold tracking-tight">
+          {WHOLE_NUMBER.format(eaten)} <span className="text-body font-normal text-fg-muted">kcal</span>
+        </span>
+        <span className="text-label text-fg-muted">
+          of {WHOLE_NUMBER.format(target)}
+        </span>
+      </p>
+      <ProgressBar eaten={eaten} target={target} pending={pending} />
+      <Difference eaten={eaten} target={target} unit="kcal" />
+    </section>
+  );
+}
+
+function Macro({ label, eaten, target, pending }: GoalProps & { label: string }) {
+  return (
+    <section className="flex flex-col gap-1.5">
+      <span className="text-label text-fg-muted">{label}</span>
+      <span className="text-body">
+        {WHOLE_NUMBER.format(eaten)}
+        <span className="text-fg-faint"> / {Math.round(target)} g</span>
+      </span>
+      <ProgressBar eaten={eaten} target={target} pending={pending} />
+      <Difference eaten={eaten} target={target} unit="g" />
+    </section>
+  );
+}
+
+function ProgressBar({ eaten, target, pending }: GoalProps) {
+  const eatenShare = Math.min(eaten / target, 1);
+  const pendingShare = Math.min(pending / target, 1 - eatenShare);
 
   return (
-    <li className="flex flex-col gap-1">
-      <div className="flex justify-between">
-        <span>{label}</span>
-        <span className="text-fg-muted">
-          {Math.round(eaten)} / {Math.round(target)} {unit}
-        </span>
-      </div>
-      <div className="flex h-1.5 overflow-hidden rounded-full bg-inset">
-        <div className="bg-accent transition-all" style={{ width: `${eatenWidth}%` }} />
-        {/* What's still waiting for a "yes", so the user sees the effect before confirming. */}
-        <div className="bg-accent-soft transition-all" style={{ width: `${pendingWidth}%` }} />
-      </div>
-    </li>
+    <div className="flex h-1 overflow-hidden rounded-full bg-inset">
+      <div
+        className={cn("transition-[width]", eaten > target ? "bg-warning" : "bg-accent")}
+        style={{ width: `${eatenShare * 100}%` }}
+      />
+      {/* What's still waiting for a "yes", so the user sees the effect before confirming. */}
+      <div className="bg-accent-soft transition-[width]" style={{ width: `${pendingShare * 100}%` }} />
+    </div>
+  );
+}
+
+function Difference({ eaten, target, unit }: { eaten: number; target: number; unit: string }) {
+  const over = Math.round(eaten - target);
+  if (over > 0) {
+    return (
+      <span className="text-caption text-warning">
+        +{over.toLocaleString("en-US")} {unit} over
+      </span>
+    );
+  }
+  return (
+    <span className="text-caption text-fg-faint">
+      {(-over).toLocaleString("en-US")} {unit} left
+    </span>
   );
 }
 
 function PendingFoods({ entries }: { entries: FoodEntry[] }) {
   return (
-    <div className="rounded-control border border-dashed border-accent p-3">
-      <p className="mb-2 text-caption text-fg">Log {entries.length > 1 ? "these" : "this"}? Say yes or no.</p>
-      <ul className="flex flex-col gap-2">
+    <div className="-mx-3 shrink-0 rounded-control border border-accent-line bg-accent-faint px-3 pt-3">
+      <p className="flex items-center gap-2 text-caption">
+        <span className="size-1.5 animate-pulse rounded-full bg-accent" />
+        <span className="font-medium">Log {entries.length > 1 ? "these" : "this"}?</span>
+        <span className="text-fg-faint">Say yes or no.</span>
+      </p>
+      <ul className="divide-y divide-line">
         {entries.map((entry) => (
           <EntryRow key={entry.food} entry={entry} />
         ))}
@@ -105,19 +172,40 @@ function PendingFoods({ entries }: { entries: FoodEntry[] }) {
 
 function EntryRow({ entry }: { entry: FoodEntry }) {
   return (
-    <li className="flex items-center justify-between gap-3">
-      <span className="truncate">
-        {entry.display_name}
-        <span className="text-fg-faint"> · {Math.round(entry.grams)} g</span>
-      </span>
-      <span className="flex shrink-0 items-center gap-2">
-        {entry.source === "estimate" && (
-          <span className="rounded-full bg-inset px-2 py-0.5 text-caption text-fg-muted">
-            estimate
+    <li className="py-1">
+      <div className="-mx-2 flex items-start justify-between gap-4 rounded-control px-2 py-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="break-words">{entry.display_name}</span>
+          <span className="flex items-center gap-2 text-caption text-fg-faint">
+            {Math.round(entry.grams)} g
+            <SourceTag source={entry.source} />
           </span>
-        )}
-        {Math.round(entry.macros.calories)} kcal
-      </span>
+        </div>
+        <span className="shrink-0 text-right">
+          {Math.round(entry.macros.calories).toLocaleString("en-US")}
+          <span className="text-fg-faint"> kcal</span>
+        </span>
+      </div>
     </li>
+  );
+}
+
+function SourceTag({ source }: { source: FoodEntry["source"] }) {
+  if (source === "usda") {
+    return <span className="rounded-tag bg-inset px-1.5 py-px text-fg-muted">USDA</span>;
+  }
+  return (
+    <span className="rounded-tag border border-dashed border-line-strong px-1.5 text-fg-muted">
+      Estimate
+    </span>
+  );
+}
+
+function EmptyLog() {
+  return (
+    <div className="flex flex-col gap-1 border-t border-line pt-5 pb-6">
+      <p>Tell Sarjy what you ate.</p>
+      <p className="text-label text-fg-faint">Try &ldquo;I had a banana for breakfast.&rdquo;</p>
+    </div>
   );
 }

@@ -25,7 +25,7 @@ export function CallScreen({
   onEnd,
 }: CallScreenProps) {
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[1fr_400px] items-center gap-12 pb-10">
+    <div className="grid min-h-0 flex-1 grid-cols-[1fr_400px] grid-rows-[minmax(0,1fr)] items-center gap-12 pb-10">
       <section className="flex flex-col items-center">
         <p className={status?.isError ? "h-5 text-label text-warning" : "h-5 text-label text-fg-muted"}>
           {status?.text}
