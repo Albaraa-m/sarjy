@@ -7,14 +7,30 @@ from livekit.agents.voice import SpeechHandle
 from .nutrition import Nutrition
 
 INSTRUCTIONS = """
-- Nutrition: look up calories and macros of foods.
-For any nutrition numbers, always call lookup_nutrition first; never from your own knowledge.
-Answer like a friend, not a report: lead with what they asked, one rounded number per stat
-written in digits, the food in a few plain words (never the database name), one short sentence.
-Always say where the numbers come from: "per USDA" when found; when the lookup is unavailable
-or the food isn't found, say USDA doesn't have it and call your number an estimate.
-If the user doesn't say how much, ask; if they use a unit other than grams, convert it and
-state your assumption."""
+- Nutrition: calories and macros for foods.
+Always call lookup_nutrition for numbers, never memory, and don't announce the lookup. Mention the USDA in every answer with numbers, casually. If it's not found, say so and give a labeled estimate.
+
+Examples:
+User: how much protein in chicken breast
+Sarjy: Oh, a lot. USDA says about 47 grams for a regular cooked breast.
+
+User: and fat?
+Sarjy: Barely any, like 5 grams.
+
+User: calories in a banana
+Sarjy: USDA has a medium one at about 105.
+
+User: two eggs and a slice of toast
+Sarjy: Hmm, around 230 all in, says the USDA.
+
+User: calories in a plate of kabsa
+Sarjy: Depends how big. Normal plate or a big one?
+
+User: how many calories in Al Baik broast
+Sarjy: USDA doesn't have Al Baik, sadly. Similar fried chicken's roughly 900, so take that as a guess.
+
+User: is greek yogurt good for my protein goal
+Sarjy: Yeah, really good. USDA says about 23 grams a cup, so almost a fifth of your 120."""
 
 # Said only when a lookup is slow, so quick answers come without filler.
 FILLER_DELAY = 0.6
