@@ -17,6 +17,17 @@ const MACROS = [
   { key: "fat_g", label: "Fat" },
 ] as const satisfies readonly { key: keyof Macros; label: string }[];
 
+const NO_MACROS: Macros = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+// Shown until the agent publishes today's log, so the card keeps its shape and counts up from 0.
+const NOTHING_YET: NutritionSummary = {
+  day: "",
+  entries: [],
+  pending: [],
+  totals: NO_MACROS,
+  targets: NO_MACROS,
+  remaining: NO_MACROS,
+};
+
 type NutritionPanelProps = {
   /** The agent's `nutrition` participant attribute (a JSON day summary). */
   attribute: string | undefined;
@@ -31,18 +42,23 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
         <h2 className="text-title font-semibold">Today</h2>
         <span className="text-caption text-fg-faint">Daily targets</span>
       </header>
-      {parsed.status === "waiting" && <p className="text-fg-muted">Loading today…</p>}
-      {parsed.status === "invalid" && (
+      {parsed.status === "invalid" ? (
         <p className="text-warning">Couldn&apos;t read today&apos;s log: {parsed.error}</p>
+      ) : (
+        <Summary summary={parsed.status === "ok" ? parsed.summary : null} />
       )}
-      {parsed.status === "ok" && <Summary summary={parsed.summary} />}
     </aside>
   );
 }
 
-function Summary({ summary }: { summary: NutritionSummary }) {
-  // Rows already there when the card first loads stay still; later ones animate in.
-  const [loadedEntryCount] = useState(summary.entries.length);
+/** `summary` is null until the agent has published today's log. */
+function Summary({ summary: published }: { summary: NutritionSummary | null }) {
+  const summary = published ?? NOTHING_YET;
+  // Rows already there when the log first loads stay still; later ones animate in.
+  const [loadedEntryCount, setLoadedEntryCount] = useState<number | null>(null);
+  if (published && loadedEntryCount === null) {
+    setLoadedEntryCount(published.entries.length);
+  }
   const pending = (key: keyof Macros) =>
     summary.pending.reduce((sum, entry) => sum + entry.macros[key], 0);
   // Newest first, where a food just confirmed from the pending box appears.
@@ -67,9 +83,9 @@ function Summary({ summary }: { summary: NutritionSummary }) {
         ))}
       </div>
       {summary.pending.length > 0 && <PendingFoods entries={summary.pending} />}
-      {summary.entries.length === 0 && summary.pending.length === 0 ? (
-        <EmptyLog />
-      ) : (
+      {!published && <p className="border-t border-line pt-5 text-fg-faint">Loading today&apos;s foods…</p>}
+      {published && summary.entries.length === 0 && summary.pending.length === 0 && <EmptyLog />}
+      {summary.entries.length > 0 && (
         <div className="flex min-h-0 flex-col border-t border-line">
           {/* Scrolls on its own, fading out at the bottom, so the totals above stay in view.
               The side padding gives the rows' highlight room without a sideways scrollbar. */}
@@ -78,7 +94,7 @@ function Summary({ summary }: { summary: NutritionSummary }) {
               <EntryRow
                 key={`${index}-${entry.food}`}
                 entry={entry}
-                isNew={index >= loadedEntryCount}
+                isNew={loadedEntryCount !== null && index >= loadedEntryCount}
               />
             ))}
           </ul>
@@ -105,7 +121,7 @@ function Calories({ eaten, target, pending }: GoalProps) {
           <AnimatedNumber value={eaten} /> <span className="text-body font-normal text-fg-muted">kcal</span>
         </span>
         <span className="text-label text-fg-muted">
-          of <AnimatedNumber value={target} />
+          of <Target value={target} />
         </span>
       </p>
       <ProgressBar eaten={eaten} target={target} pending={pending} />
@@ -120,7 +136,10 @@ function Macro({ label, eaten, target, pending }: GoalProps & { label: string })
       <span className="text-label text-fg-muted">{label}</span>
       <span className="text-body">
         <AnimatedNumber value={eaten} />
-        <span className="text-fg-faint"> / {Math.round(target)} g</span>
+        <span className="text-fg-faint">
+          {" / "}
+          <Target value={target} /> g
+        </span>
       </span>
       <ProgressBar eaten={eaten} target={target} pending={pending} />
       <Difference eaten={eaten} target={target} unit="g" />
@@ -128,9 +147,14 @@ function Macro({ label, eaten, target, pending }: GoalProps & { label: string })
   );
 }
 
+// Targets are 0 only while the log is loading.
+function Target({ value }: { value: number }) {
+  return value > 0 ? <AnimatedNumber value={value} /> : "–";
+}
+
 function ProgressBar({ eaten, target, pending }: GoalProps) {
-  const eatenShare = Math.min(eaten / target, 1);
-  const pendingShare = Math.min(pending / target, 1 - eatenShare);
+  const eatenShare = target > 0 ? Math.min(eaten / target, 1) : 0;
+  const pendingShare = target > 0 ? Math.min(pending / target, 1 - eatenShare) : 0;
 
   return (
     <div className="flex h-1 overflow-hidden rounded-full bg-inset">
@@ -145,6 +169,9 @@ function ProgressBar({ eaten, target, pending }: GoalProps) {
 }
 
 function Difference({ eaten, target, unit }: { eaten: number; target: number; unit: string }) {
+  if (target === 0) {
+    return <span className="text-caption">&nbsp;</span>;
+  }
   const over = Math.round(eaten - target);
   if (over > 0) {
     return (
