@@ -1,3 +1,8 @@
+"use client";
+
+import { useState } from "react";
+
+import { AnimatedNumber } from "@/components/animated-number";
 import {
   type FoodEntry,
   type Macros,
@@ -5,8 +10,6 @@ import {
   parseNutritionSummary,
 } from "@/lib/parse-nutrition-summary";
 import { cn } from "@/lib/utils";
-
-const WHOLE_NUMBER = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 const MACROS = [
   { key: "protein_g", label: "Protein" },
@@ -38,6 +41,8 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
 }
 
 function Summary({ summary }: { summary: NutritionSummary }) {
+  // Rows already there when the card first loads stay still; later ones animate in.
+  const [loadedEntryCount] = useState(summary.entries.length);
   const pending = (key: keyof Macros) =>
     summary.pending.reduce((sum, entry) => sum + entry.macros[key], 0);
   // Newest first, where a food just confirmed from the pending box appears.
@@ -72,6 +77,7 @@ function Summary({ summary }: { summary: NutritionSummary }) {
               <EntryRow
                 key={`${index}-${entry.food}`}
                 entry={entry}
+                isNew={index >= loadedEntryCount}
               />
             ))}
           </ul>
@@ -95,10 +101,10 @@ function Calories({ eaten, target, pending }: GoalProps) {
     <section className="flex shrink-0 flex-col gap-2">
       <p className="flex items-baseline justify-between">
         <span className="text-figure font-semibold tracking-tight">
-          {WHOLE_NUMBER.format(eaten)} <span className="text-body font-normal text-fg-muted">kcal</span>
+          <AnimatedNumber value={eaten} /> <span className="text-body font-normal text-fg-muted">kcal</span>
         </span>
         <span className="text-label text-fg-muted">
-          of {WHOLE_NUMBER.format(target)}
+          of <AnimatedNumber value={target} />
         </span>
       </p>
       <ProgressBar eaten={eaten} target={target} pending={pending} />
@@ -112,7 +118,7 @@ function Macro({ label, eaten, target, pending }: GoalProps & { label: string })
     <section className="flex flex-col gap-1.5">
       <span className="text-label text-fg-muted">{label}</span>
       <span className="text-body">
-        {WHOLE_NUMBER.format(eaten)}
+        <AnimatedNumber value={eaten} />
         <span className="text-fg-faint"> / {Math.round(target)} g</span>
       </span>
       <ProgressBar eaten={eaten} target={target} pending={pending} />
@@ -163,17 +169,22 @@ function PendingFoods({ entries }: { entries: FoodEntry[] }) {
       </p>
       <ul className="divide-y divide-line">
         {entries.map((entry) => (
-          <EntryRow key={entry.food} entry={entry} />
+          <EntryRow key={entry.food} entry={entry} isNew={false} />
         ))}
       </ul>
     </div>
   );
 }
 
-function EntryRow({ entry }: { entry: FoodEntry }) {
+function EntryRow({ entry, isNew }: { entry: FoodEntry; isNew: boolean }) {
   return (
     <li className="py-1">
-      <div className="-mx-2 flex items-start justify-between gap-4 rounded-control px-2 py-2">
+      <div
+        className={cn(
+          "-mx-2 flex items-start justify-between gap-4 rounded-control px-2 py-2",
+          isNew && "animate-entry-in",
+        )}
+      >
         <div className="flex min-w-0 flex-col gap-1">
           <span className="break-words">{entry.display_name}</span>
           <span className="flex items-center gap-2 text-caption text-fg-faint">

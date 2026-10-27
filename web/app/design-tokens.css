@@ -46,4 +46,22 @@
   --ease-quiet: cubic-bezier(0.2, 0, 0, 1);
   --default-transition-duration: 180ms;
   --default-transition-timing-function: var(--ease-quiet);
+
+  /* A newly logged food slides in, then its purple highlight fades out. */
+  --animate-entry-in: entry-in 1.6s var(--ease-quiet);
+  @keyframes entry-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-4px);
+      background-color: var(--color-accent-soft);
+    }
+    15% {
+      opacity: 1;
+      transform: none;
+      background-color: var(--color-accent-soft);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
 }
