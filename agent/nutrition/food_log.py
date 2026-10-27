@@ -17,7 +17,7 @@ DAILY_TARGETS = Macros(calories=2200, protein_g=150, carbs_g=220, fat_g=70)
 class DaySummary:
     day: date
     entries: list[FoodEntry]
-    pending: FoodEntry | None
+    pending: list[FoodEntry]
     totals: Macros
     targets: Macros
     remaining: Macros
@@ -28,8 +28,8 @@ class DaySummary:
 
 
 class FoodLog:
-    """One user's food log for today. A food is first prepared (pending), and saved only once
-    confirmed. Today's entries are kept in memory, so only confirming touches the database.
+    """One user's food log for today. Foods are first prepared (pending), and saved together
+    once confirmed. Today's entries are kept in memory, so only confirming touches the database.
     Every change is reported through `on_change`, e.g. to update the UI."""
 
     def __init__(
@@ -46,7 +46,7 @@ class FoodLog:
         # A call that runs past midnight keeps logging to the day it started.
         self.day = day
         self._entries = entries
-        self._pending: FoodEntry | None = None
+        self._pending: list[FoodEntry] = []
 
     @classmethod
     async def load(
@@ -59,27 +59,39 @@ class FoodLog:
         return cls(user_id, nutrition, on_change, day, await db.foods_on(user_id, day))
 
     async def prepare(self, match_id: int, grams: float) -> DaySummary | None:
-        """Makes a looked-up USDA food the pending entry. None if that id was never looked up."""
+        """Adds a looked-up USDA food to the pending foods. None if that id was never looked up."""
         match = self.nutrition.match(match_id)
         if match is None:
             return None
         entry = FoodEntry(match.description, grams, match.per_100g.scaled(grams), "usda")
-        return await self._set_pending(entry)
+        return await self._add_pending(entry)
 
     async def prepare_estimate(self, food: str, grams: float, macros: Macros) -> DaySummary:
-        return await self._set_pending(FoodEntry(food, grams, macros, "estimate"))
+        return await self._add_pending(FoodEntry(food, grams, macros, "estimate"))
 
     async def confirm(self) -> DaySummary | None:
-        """Saves the pending entry. None if nothing is pending, so a repeated yes can't save twice.
-        If saving fails, the entry stays pending, so the user can say yes again."""
-        if self._pending is None:
+        """Saves all pending foods. None if nothing is pending, so a repeated yes can't save twice.
+        If saving fails, the foods stay pending, so the user can say yes again."""
+        entries = self._pending
+        if not entries:
             return None
-        await db.add_food(self.user_id, self.day, self._pending)
-        self._entries.append(self._pending)
-        return await self._set_pending(None)
+        # Taken before the await, so a parallel confirm call finds nothing to save.
+        self._pending = []
+        try:
+            await db.add_foods(self.user_id, self.day, entries)
+        except Exception:
+            self._pending = entries + self._pending
+            raise
+        self._entries.extend(entries)
+        return await self._changed()
 
-    async def cancel(self) -> DaySummary:
-        return await self._set_pending(None)
+    async def cancel(self, food: str | None = None) -> DaySummary:
+        """Drops the pending food named `food`, or all pending foods when None."""
+        if food is None:
+            self._pending = []
+        else:
+            self._pending = [entry for entry in self._pending if entry.food != food]
+        return await self._changed()
 
     def summary(self) -> DaySummary:
         totals = _sum(entry.macros for entry in self._entries)
@@ -90,11 +102,16 @@ class FoodLog:
             fat_g=max(round(DAILY_TARGETS.fat_g - totals.fat_g, 1), 0),
         )
         return DaySummary(
-            self.day, list(self._entries), self._pending, totals, DAILY_TARGETS, remaining
+            self.day, list(self._entries), list(self._pending), totals, DAILY_TARGETS, remaining
         )
 
-    async def _set_pending(self, entry: FoodEntry | None) -> DaySummary:
-        self._pending = entry
+    async def _add_pending(self, entry: FoodEntry) -> DaySummary:
+        # Preparing a pending food again replaces it ("actually, two eggs").
+        self._pending = [pending for pending in self._pending if pending.food != entry.food]
+        self._pending.append(entry)
+        return await self._changed()
+
+    async def _changed(self) -> DaySummary:
         summary = self.summary()
         await self._on_change(summary)
         return summary

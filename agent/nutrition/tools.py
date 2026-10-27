@@ -114,7 +114,7 @@ class NutritionTools(llm.Toolset):
                 "status": "unknown_food",
                 "next": "Call lookup_nutrition, then use one of its ids.",
             }
-        return {"status": "pending", **asdict(summary)["pending"]}
+        return {"status": "pending", "pending": asdict(summary)["pending"]}
 
     @function_tool
     async def prepare_estimated_food_log(
@@ -139,7 +139,7 @@ class NutritionTools(llm.Toolset):
         """
         macros = Macros(calories, protein_g, carbs_g, fat_g)
         summary = await self.food_log.prepare_estimate(food, grams, macros)
-        return {"status": "pending", **asdict(summary)["pending"]}
+        return {"status": "pending", "pending": asdict(summary)["pending"]}
 
     @function_tool
     async def confirm_food_log(self) -> dict:
