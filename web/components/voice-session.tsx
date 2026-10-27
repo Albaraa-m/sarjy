@@ -11,6 +11,7 @@ import { TokenSource } from "livekit-client";
 import { useEffect, useState } from "react";
 
 import { CallControls } from "@/components/call-controls";
+import { NutritionPanel } from "@/components/nutrition-panel";
 import { SarjyAura } from "@/components/sarjy-aura";
 import { Welcome } from "@/components/welcome";
 
@@ -58,17 +59,20 @@ function Conversation({ username, onEnd }: ConversationProps) {
   return (
     <SessionProvider session={session}>
       <RoomAudioRenderer />
-      <section className="flex flex-1 flex-col items-center justify-center gap-4">
-        <SarjyAura size="lg" state={agent.state} audioTrack={agent.microphoneTrack} />
-        {/* The Aura shows listening, thinking and speaking; text is only for what it can't. */}
-        <p className={failure ? "h-6 text-danger" : "h-6 text-foreground/60"}>
-          {failure ?? (agent.isConnected ? null : "Connecting…")}
-        </p>
-        <StartAudio
-          label="Tap to hear Sarjy"
-          className="rounded-full bg-white/10 px-5 py-2 text-sm hover:bg-white/15"
-        />
-      </section>
+      <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6 md:flex-row md:gap-16">
+        <section className="flex flex-col items-center gap-4">
+          <SarjyAura size="lg" state={agent.state} audioTrack={agent.microphoneTrack} />
+          {/* The Aura shows listening, thinking and speaking; text is only for what it can't. */}
+          <p className={failure ? "h-6 text-danger" : "h-6 text-foreground/60"}>
+            {failure ?? (agent.isConnected ? null : "Connecting…")}
+          </p>
+          <StartAudio
+            label="Tap to hear Sarjy"
+            className="rounded-full bg-white/10 px-5 py-2 text-sm hover:bg-white/15"
+          />
+        </section>
+        <NutritionPanel attribute={agent.attributes.nutrition} />
+      </div>
       <CallControls microphoneTrack={session.local.microphoneTrack} onEnd={onEnd} />
     </SessionProvider>
   );
