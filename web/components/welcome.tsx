@@ -1,9 +1,11 @@
 "use client";
 
+import { CornerDownLeft } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import { SarjyAura } from "@/components/sarjy-aura";
 import { USERNAME_PATTERN } from "@/lib/username-pattern";
+import { cn } from "@/lib/utils";
 
 type WelcomeProps = {
   onStart: (username: string) => void;
@@ -12,38 +14,46 @@ type WelcomeProps = {
 export function Welcome({ onStart }: WelcomeProps) {
   const [input, setInput] = useState("");
   const username = input.trim().toLowerCase();
+  const isValid = USERNAME_PATTERN.test(username);
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    onStart(username);
+    if (isValid) {
+      onStart(username);
+    }
   }
 
   return (
-    <section className="flex flex-1 flex-col items-center justify-center gap-6 pb-14">
-      <SarjyAura size="xl" state="idle" className="-mt-14 -mb-20" />
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-display font-semibold tracking-tight">Talk to Sarjy</h1>
-        <p className="text-body text-fg-muted">Your voice assistant. Just speak.</p>
-      </div>
-      <form onSubmit={submit} className="mt-2 flex w-full max-w-xs flex-col gap-2">
+    <section className="flex flex-1 flex-col items-center justify-center pb-14">
+      <SarjyAura size="xl" state="idle" className="-mt-14 -mb-16" />
+      <form
+        onSubmit={submit}
+        className="flex w-full max-w-xs items-center gap-2 border-b border-line transition focus-within:border-accent-line"
+      >
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="Your name"
-          aria-label="Your name"
-          autoComplete="given-name"
+          placeholder="username"
+          aria-label="Username"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
           autoFocus
-          className="h-11 rounded-control border border-line bg-surface px-4 text-center text-body outline-none transition placeholder:text-fg-faint focus:border-accent"
+          className="h-10 min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-fg-faint"
         />
+        {/* Stays mounted while hidden, so the field doesn't shift when it appears. */}
         <button
           type="submit"
-          disabled={!USERNAME_PATTERN.test(username)}
-          className="h-11 rounded-control bg-accent text-body font-medium text-fg transition hover:opacity-90 disabled:opacity-35"
+          disabled={!isValid}
+          aria-label="Start talking"
+          className={cn(
+            "grid size-7 place-items-center rounded-tag text-fg-muted transition outline-none hover:bg-surface-hover hover:text-fg focus-visible:ring-3 focus-visible:ring-accent-soft",
+            !isValid && "invisible opacity-0",
+          )}
         >
-          Start talking
+          <CornerDownLeft className="size-4" />
         </button>
       </form>
-      <p className="text-caption text-fg-faint">Uses your microphone.</p>
     </section>
   );
 }
