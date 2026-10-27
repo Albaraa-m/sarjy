@@ -1,16 +1,15 @@
 from livekit.agents import AgentSession
 
 from memory import UserMemory
-from nutrition import Nutrition, NutritionTools
 from sarjy import Sarjy
 
 MEMORY_TALK = ("memory", "saved", "on file", "my records")
 
 
-async def test_knows_the_user_without_mentioning_memory(llm):
+async def test_knows_the_user_without_mentioning_memory(llm, nutrition_tools):
     memory = UserMemory("test-persona", {"favorite_color": "teal"})
     async with AgentSession(llm=llm) as session:
-        await session.start(Sarjy(memory, NutritionTools(Nutrition())))
+        await session.start(Sarjy(memory, nutrition_tools))
         replies = []
         for text in ("What's my favorite color?", "My favorite food is kabsa."):
             result = await session.run(user_input=text)

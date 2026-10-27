@@ -64,5 +64,5 @@ async def entrypoint(ctx: JobContext):
     )
     memory.listen(session)
     diagnostics.watch(session)
-    await session.start(agent=Sarjy(memory, NutritionTools(nutrition)), room=ctx.room)
+    await session.start(agent=Sarjy(memory, NutritionTools(nutrition, food_log)), room=ctx.room)
     await show_food_log(food_log.summary())

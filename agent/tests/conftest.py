@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from livekit.plugins import openai
 
 import database
+from nutrition import DaySummary, FoodLog, Nutrition, NutritionTools
 
 load_dotenv()
 
@@ -30,3 +31,12 @@ async def user_id():
     await pool.execute("delete from memories where user_id = $1", user_id)
     await pool.execute("delete from food_log where user_id = $1", user_id)
 
+
+async def ignore_ui(summary: DaySummary) -> None:
+    pass
+
+
+@pytest.fixture
+async def nutrition_tools(user_id) -> NutritionTools:
+    nutrition = Nutrition()
+    return NutritionTools(nutrition, await FoodLog.load(user_id, nutrition, on_change=ignore_ui))

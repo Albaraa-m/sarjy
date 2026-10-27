@@ -1,10 +1,12 @@
 import asyncio
 import random
+from dataclasses import asdict
 
 from livekit.agents import RunContext, function_tool, llm
 from livekit.agents.voice import SpeechHandle
 
-from .nutrition import Nutrition
+from .food_log import DaySummary, FoodLog
+from .nutrition import Macros, Nutrition
 
 INSTRUCTIONS = """
 - Nutrition: calories and macros for foods.
@@ -30,7 +32,27 @@ User: how many calories in Al Baik broast
 Sarjy: USDA doesn't have Al Baik, sadly. Similar fried chicken's roughly 900, so take that as a guess.
 
 User: is greek yogurt good for my protein goal
-Sarjy: Yeah, really good. USDA says about 23 grams a cup, so almost a fifth of your 120."""
+Sarjy: Yeah, really good. USDA says about 23 grams a cup, so almost a fifth of your 120.
+
+- Food log: what the user ate today, against daily targets.
+Log only when the user says they ate or had something; a question is just a lookup. To log: look
+the food up, pick the match that fits, and call prepare_food_log with its id in the same turn,
+before you ask anything: the user sees the pending entry on screen while you read back the food,
+amount and calories and ask whether to log it. Save with confirm_food_log only after a clear yes;
+on no, call cancel_food_log; if they change the food or amount, prepare it again. For a countable
+food (a banana, a burrito) assume a normal one and say so; otherwise ask how much. If USDA doesn't
+have it, prepare your own estimate with prepare_estimated_food_log and say it's an estimate.
+For anything about what they've eaten or have left today, call get_daily_totals first.
+
+Examples:
+User: I had a banana this morning
+Sarjy: A medium banana, about 105 calories per USDA. Want me to log it?
+
+User: yes
+Sarjy: Done, you're at 1,200 of 2,200 calories today.
+
+User: I ate a plate of kabsa
+Sarjy: USDA doesn't have kabsa, so my estimate for a normal plate is about 700 calories. Log that?"""
 
 # Said only when a lookup is slow, so quick answers come without filler.
 FILLER_DELAY = 0.6
@@ -53,9 +75,10 @@ class NutritionTools(llm.Toolset):
 
     instructions = INSTRUCTIONS
 
-    def __init__(self, nutrition: Nutrition):
+    def __init__(self, nutrition: Nutrition, food_log: FoodLog):
         super().__init__(id="nutrition")
         self.nutrition = nutrition
+        self.food_log = food_log
         self._filler: SpeechHandle | None = None
 
     @function_tool
@@ -74,3 +97,74 @@ class NutritionTools(llm.Toolset):
             self._filler = context.session.say(random.choice(FILLERS), add_to_chat_ctx=False)
             await asyncio.sleep(MIN_LOOKUP_AFTER_FILLER)
         return await lookup
+
+    @function_tool
+    async def prepare_food_log(self, match_id: int, grams: float) -> dict:
+        """Proposes logging a food the user ate, using a match from lookup_nutrition. Call it
+        right after the lookup, before asking whether to log it. Nothing is saved until
+        confirm_food_log; the user sees it as pending.
+
+        Args:
+            match_id: The id of the lookup_nutrition match that fits what the user ate.
+            grams: The amount the user ate, in grams.
+        """
+        summary = await self.food_log.prepare(match_id, grams)
+        if summary is None:
+            return {
+                "status": "unknown_food",
+                "next": "Call lookup_nutrition, then use one of its ids.",
+            }
+        return {"status": "pending", **asdict(summary)["pending"]}
+
+    @function_tool
+    async def prepare_estimated_food_log(
+        self,
+        food: str,
+        grams: float,
+        calories: float,
+        protein_g: float,
+        carbs_g: float,
+        fat_g: float,
+    ) -> dict:
+        """Proposes logging a food USDA doesn't have, with your own estimate for that amount.
+        Saved only after confirm_food_log, and marked as an estimate.
+
+        Args:
+            food: What the user ate, e.g. "chicken kabsa".
+            grams: The amount the user ate, in grams.
+            calories: Your estimate for that amount.
+            protein_g: Your estimate for that amount.
+            carbs_g: Your estimate for that amount.
+            fat_g: Your estimate for that amount.
+        """
+        macros = Macros(calories, protein_g, carbs_g, fat_g)
+        summary = await self.food_log.prepare_estimate(food, grams, macros)
+        return {"status": "pending", **asdict(summary)["pending"]}
+
+    @function_tool
+    async def confirm_food_log(self) -> dict:
+        """Saves the pending food. Call only after the user clearly says yes to logging it."""
+        summary = await self.food_log.confirm()
+        if summary is None:
+            return {"status": "nothing_pending"}
+        return {"status": "saved", **_day(summary)}
+
+    @function_tool
+    async def cancel_food_log(self) -> dict:
+        """Drops the pending food when the user doesn't want it logged."""
+        await self.food_log.cancel()
+        return {"status": "cancelled"}
+
+    @function_tool
+    async def get_daily_totals(self) -> dict:
+        """Today's logged foods, totals, demo targets and what's remaining."""
+        return _day(self.food_log.summary())
+
+
+def _day(summary: DaySummary) -> dict:
+    return {
+        "foods": [entry.food for entry in summary.entries],
+        "totals": asdict(summary.totals),
+        "targets": asdict(summary.targets),
+        "remaining": asdict(summary.remaining),
+    }
