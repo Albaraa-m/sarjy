@@ -107,7 +107,7 @@ function EntryRow({ entry }: { entry: FoodEntry }) {
   return (
     <li className="flex items-center justify-between gap-3">
       <span className="truncate">
-        {entry.food}
+        {entry.display_name}
         <span className="text-foreground/50"> · {Math.round(entry.grams)} g</span>
       </span>
       <span className="flex shrink-0 items-center gap-2 tabular-nums">

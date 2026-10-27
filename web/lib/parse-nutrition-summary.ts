@@ -9,6 +9,7 @@ const MacrosSchema = z.object({
 
 const FoodEntrySchema = z.object({
   food: z.string(),
+  display_name: z.string(),
   grams: z.number(),
   macros: MacrosSchema,
   source: z.enum(["usda", "estimate"]),
