@@ -7,13 +7,13 @@ from sarjy import Sarjy
 
 
 async def chat(llm: openai.LLM, user_id: str, tools: NutritionTools, text: str):
-    """Runs one text turn in a new session, the way a returning user would start a call."""
+    """Runs one text turn in a new call, then remembers it as the end of a call does."""
     memory = await UserMemory.load(user_id)
     async with AgentSession(llm=llm) as session:
         memory.listen(session)
         await session.start(Sarjy(memory, tools))
         result = await session.run(user_input=text)
-    await memory.wait_for_pending()
+    await memory.remember_rest()
     return result, memory
 
 

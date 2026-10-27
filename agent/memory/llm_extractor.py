@@ -9,17 +9,18 @@ from .changes import Fact, MemoryChanges
 logger = logging.getLogger("sarjy.memory")
 
 PROMPT = """You maintain a voice assistant's long-term memory of one user. You never answer the user.
-You get the facts already known and the user's latest message. Return the changes to make:
+You get the facts already known and the latest turns of a conversation between the user and
+Sarjy, the assistant. Use Sarjy's lines only as context. Return the changes to make:
 - set: durable facts or preferences the user states about themselves (e.g. name, favorite color,
   home city, foods they like or dislike). Keys are snake_case. For a fact that changes, reuse its
-  existing key with the new value.
+  existing key with the new value. If the user corrects themselves, keep the final value.
 - remove: keys of known facts the user contradicts or asks you to forget. When a new fact
   replaces an old one under a different key (dislikes_milk -> likes_milk), remove the old key.
 Store the user's name under "name". The assistant is named Sarjy (speech-to-text may spell it
 "Sergei", "Sergey", "Sarji"): a name the user addresses ("Hey, Sergei") is the assistant's, never
 the user's.
-Ignore one-off details like what the user ate today. Questions and small talk change nothing:
-respond {"set": [], "remove": []}.
+Ignore one-off details like what the user ate today or a food they asked about. Questions and
+small talk change nothing: respond {"set": [], "remove": []}.
 
 Known facts: """
 
@@ -31,14 +32,14 @@ MAX_CHANGES = 10
 MAX_NAME_WORDS = 3
 
 
-async def extract_changes(text: str, known: dict[str, str]) -> MemoryChanges:
+async def extract_changes(conversation: str, known: dict[str, str]) -> MemoryChanges:
     try:
         response = await AsyncGroq().chat.completions.create(
             model="openai/gpt-oss-20b",
             reasoning_effort="low",
             messages=[
                 {"role": "system", "content": PROMPT + json.dumps(known)},
-                {"role": "user", "content": text},
+                {"role": "user", "content": conversation},
             ],
             response_format={
                 "type": "json_schema",

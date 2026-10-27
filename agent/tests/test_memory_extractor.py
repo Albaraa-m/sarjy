@@ -4,9 +4,9 @@ from memory.changes import Fact, MemoryChanges
 from memory.llm_extractor import extract_changes, parse_changes
 
 
-async def remember(text: str, known: dict[str, str]) -> dict[str, str]:
+async def remember(conversation: str, known: dict[str, str]) -> dict[str, str]:
     facts = dict(known)
-    (await extract_changes(text, known)).apply_to(facts)
+    (await extract_changes(conversation, known)).apply_to(facts)
     return facts
 
 
@@ -36,25 +36,44 @@ def test_sentence_saved_as_a_name_is_dropped():
 
 
 async def test_changing_a_preference_replaces_the_old_one():
-    facts = await remember("Actually, I do like milk now.", known={"dislikes_milk": "yes"})
+    facts = await remember("User: Actually, I do like milk now.", known={"dislikes_milk": "yes"})
     assert "dislikes_milk" not in facts
     assert any("milk" in key for key in facts)
 
 
 async def test_updating_a_fact_reuses_its_key():
-    facts = await remember("My favorite color is green now.", known={"favorite_color": "blue"})
+    facts = await remember(
+        "User: My favorite color is green now.", known={"favorite_color": "blue"}
+    )
     assert facts == {"favorite_color": "green"}
 
 
 async def test_user_name_uses_the_name_key():
-    facts = await remember("I'm Albaraa, by the way.", known={})
+    facts = await remember("User: I'm Albaraa, by the way.", known={})
     assert facts.get("name") == "Albaraa"
 
 
 async def test_greeting_the_assistant_is_not_the_users_name():
-    assert await remember("Hey, Sergei. What can you do?", known={}) == {}
+    assert await remember("User: Hey, Sergei. What can you do?", known={}) == {}
 
 
 async def test_small_talk_changes_nothing():
     known = {"name": "Albaraa", "favorite_color": "blue"}
-    assert await remember("Haha, that's funny. How's your day going?", known) == known
+    assert await remember("User: Haha, that's funny. How's your day going?", known) == known
+
+
+async def test_self_correction_keeps_the_final_value():
+    conversation = """User: My favorite color is blue.
+Sarjy: Blue, nice.
+User: Actually, make that green."""
+    assert (await remember(conversation, known={})).get("favorite_color") == "green"
+
+
+async def test_correcting_a_question_does_not_change_a_favorite():
+    # "Actually, uh, brown rice" once overwrote the user's favorite food.
+    known = {"favorite_food": "steak"}
+    conversation = """User: How many calories are in 150 grams of rice?
+Sarjy: About 195 calories for 150 grams of cooked white rice.
+User: Actually, uh, brown rice.
+Sarjy: 150 grams of cooked brown rice has about 220 calories."""
+    assert await remember(conversation, known) == known

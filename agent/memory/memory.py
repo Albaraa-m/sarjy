@@ -1,12 +1,17 @@
 import asyncio
 import logging
 
-from livekit.agents import AgentSession, ConversationItemAddedEvent, utils
+from livekit.agents import AgentSession, ConversationItemAddedEvent, llm, utils
 
 from . import db
 from .llm_extractor import extract_changes
 
 logger = logging.getLogger("sarjy.memory")
+
+# Long calls are also remembered along the way, so the end-of-call extraction stays small and a
+# call that ends badly loses at most this many turns.
+CHECKPOINT_USER_TURNS = 10
+SPEAKERS = {"user": "User", "assistant": "Sarjy"}
 
 
 class UserMemory:
@@ -15,9 +20,10 @@ class UserMemory:
     def __init__(self, user_id: str, facts: dict[str, str]):
         self.user_id = user_id
         self.facts = facts
+        self._unsent: list[llm.ChatMessage] = []
         # Keeps background tasks referenced so they aren't garbage-collected mid-run.
         self._tasks = utils.aio.TaskSet()
-        # Processes turns one at a time, so a later fact can't be overwritten by an earlier one.
+        # Extracts one batch at a time, so a later change can't be overwritten by an earlier one.
         self._lock = asyncio.Lock()
 
     @classmethod
@@ -33,21 +39,35 @@ class UserMemory:
         return f"\n\nWhat you know about the user:\n{remembered}"
 
     def listen(self, session: AgentSession) -> None:
-        """Remembers facts from every user message in the session, spoken or typed."""
+        """Collects the conversation, remembering it every few user turns."""
         session.on("conversation_item_added", self._on_conversation_item_added)
+
+    async def remember_rest(self) -> None:
+        """Remembers the turns since the last checkpoint. Call it once the conversation ends."""
+        rest = self._take_unsent()
+        # A checkpoint created just before may not have started yet; its older turns go first.
+        await asyncio.gather(*self._tasks.tasks)
+        await self._remember(rest)
 
     def _on_conversation_item_added(self, event: ConversationItemAddedEvent) -> None:
         message = event.item
-        if message.type == "message" and message.role == "user" and message.text_content:
-            self._tasks.create_task(self._remember(message.text_content))
+        if message.type != "message" or message.role not in SPEAKERS or not message.text_content:
+            return
+        self._unsent.append(message)
+        if sum(turn.role == "user" for turn in self._unsent) >= CHECKPOINT_USER_TURNS:
+            self._tasks.create_task(self._remember(self._take_unsent()))
 
-    async def wait_for_pending(self) -> None:
-        await asyncio.gather(*self._tasks.tasks)
+    def _take_unsent(self) -> list[llm.ChatMessage]:
+        turns, self._unsent = self._unsent, []
+        return turns
 
-    async def _remember(self, text: str) -> None:
+    async def _remember(self, turns: list[llm.ChatMessage]) -> None:
+        if not any(turn.role == "user" for turn in turns):
+            return
+        conversation = "\n".join(f"{SPEAKERS[turn.role]}: {turn.text_content}" for turn in turns)
         async with self._lock:
             try:
-                changes = await extract_changes(text, self.facts)
+                changes = await extract_changes(conversation, self.facts)
                 if changes:
                     await db.apply_changes(self.user_id, changes)
                     changes.apply_to(self.facts)
