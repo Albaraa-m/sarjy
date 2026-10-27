@@ -18,7 +18,7 @@ const MACROS = [
 ] as const satisfies readonly { key: keyof Macros; label: string }[];
 
 const NO_MACROS: Macros = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
-// Shown until the agent publishes today's log, so the card keeps its shape and counts up from 0.
+// Shown until the agent publishes today's log, so the panel keeps its shape and counts up from 0.
 const NOTHING_YET: NutritionSummary = {
   day: "",
   entries: [],
@@ -83,7 +83,6 @@ function Summary({ summary: published }: { summary: NutritionSummary | null }) {
         ))}
       </div>
       {summary.pending.length > 0 && <PendingFoods entries={summary.pending} />}
-      {!published && <p className="border-t border-line pt-5 text-fg-faint">Loading today&apos;s foods…</p>}
       {published && summary.entries.length === 0 && summary.pending.length === 0 && <EmptyLog />}
       {summary.entries.length > 0 && (
         <div className="flex min-h-0 flex-col border-t border-line">
@@ -121,7 +120,7 @@ function Calories({ eaten, target, pending }: GoalProps) {
           <AnimatedNumber value={eaten} /> <span className="text-body font-normal text-fg-muted">kcal</span>
         </span>
         <span className="text-label text-fg-muted">
-          of <Target value={target} />
+          of <AnimatedNumber value={target} />
         </span>
       </p>
       <ProgressBar eaten={eaten} target={target} pending={pending} />
@@ -138,18 +137,13 @@ function Macro({ label, eaten, target, pending }: GoalProps & { label: string })
         <AnimatedNumber value={eaten} />
         <span className="text-fg-faint">
           {" / "}
-          <Target value={target} /> g
+          <AnimatedNumber value={target} /> g
         </span>
       </span>
       <ProgressBar eaten={eaten} target={target} pending={pending} />
       <Difference eaten={eaten} target={target} unit="g" />
     </section>
   );
-}
-
-// Targets are 0 only while the log is loading.
-function Target({ value }: { value: number }) {
-  return value > 0 ? <AnimatedNumber value={value} /> : "–";
 }
 
 function ProgressBar({ eaten, target, pending }: GoalProps) {
