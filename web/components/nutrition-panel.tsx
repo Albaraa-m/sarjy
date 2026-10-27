@@ -24,7 +24,7 @@ export function NutritionPanel({ attribute }: NutritionPanelProps) {
     <aside className="w-full max-w-sm rounded-2xl bg-white/5 p-5 text-sm">
       <header className="mb-4 flex items-baseline justify-between">
         <h2 className="font-semibold">Today</h2>
-        <span className="text-xs text-foreground/50">vs demo targets</span>
+        <span className="text-xs text-foreground/50">Daily targets</span>
       </header>
       {parsed.status === "waiting" && <p className="text-foreground/50">Loading today…</p>}
       {parsed.status === "invalid" && (
