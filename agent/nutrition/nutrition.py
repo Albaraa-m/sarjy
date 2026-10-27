@@ -1,6 +1,7 @@
 import logging
 import time
 from dataclasses import asdict, dataclass
+from typing import Literal
 
 import httpx
 
@@ -35,6 +36,19 @@ class FoodMatch:
     id: int
     description: str
     per_100g: Macros
+
+
+Source = Literal["usda", "estimate"]
+
+
+@dataclass(frozen=True)
+class FoodEntry:
+    """One food portion the user ate, with its macros for that portion."""
+
+    food: str
+    grams: float
+    macros: Macros
+    source: Source
 
 
 class Nutrition:

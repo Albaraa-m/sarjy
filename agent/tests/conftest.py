@@ -28,4 +28,5 @@ async def user_id():
     yield user_id
     pool = await database.pool()
     await pool.execute("delete from memories where user_id = $1", user_id)
+    await pool.execute("delete from food_log where user_id = $1", user_id)
 
