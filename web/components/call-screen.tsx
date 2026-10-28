@@ -7,13 +7,15 @@ import { CallControls } from "@/components/call-controls";
 import { NutritionPanel } from "@/components/nutrition-panel";
 import { SarjyAura } from "@/components/sarjy-aura";
 
+export type CallStatus = { text: string; isError: boolean };
+
 type CallScreenProps = {
   username: string;
   agentState: AgentState;
   agentTrack: TrackReference | undefined;
   microphoneTrack: TrackReference | undefined;
   /** Only what the Aura can't show: connecting, or why the call failed. */
-  status: { text: string; isError: boolean } | null;
+  status: CallStatus | null;
   nutritionAttribute: string | undefined;
   onEnd: () => void;
 };

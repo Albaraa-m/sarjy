@@ -1,11 +1,17 @@
 "use client";
 
-import { RoomAudioRenderer, SessionProvider, useAgent, useSession } from "@livekit/components-react";
+import {
+  RoomAudioRenderer,
+  SessionProvider,
+  type UseAgentReturn,
+  useAgent,
+  useSession,
+} from "@livekit/components-react";
 import { TokenSource } from "livekit-client";
 import { useEffect, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
-import { CallScreen } from "@/components/call-screen";
+import { type CallStatus, CallScreen } from "@/components/call-screen";
 import { Welcome } from "@/components/welcome";
 
 const TOKEN_SOURCE = TokenSource.endpoint("/api/token");
@@ -43,13 +49,6 @@ function Conversation({ username, onEnd }: ConversationProps) {
     return () => void end();
   }, [start, end]);
 
-  const failure = error ?? (agent.state === "failed" ? agent.failureReasons.join(", ") : null);
-  const status = failure
-    ? { text: failure, isError: true }
-    : agent.isConnected
-      ? null
-      : { text: "Connecting…", isError: false };
-
   return (
     <SessionProvider session={session}>
       <RoomAudioRenderer />
@@ -58,10 +57,24 @@ function Conversation({ username, onEnd }: ConversationProps) {
         agentState={agent.state}
         agentTrack={agent.microphoneTrack}
         microphoneTrack={session.local.microphoneTrack}
-        status={status}
+        status={callStatus(error, agent)}
         nutritionAttribute={agent.attributes.nutrition}
         onEnd={onEnd}
       />
     </SessionProvider>
   );
+}
+
+/** Null once Sarjy has joined and nothing has gone wrong: the Aura shows the rest. */
+function callStatus(error: string | null, agent: UseAgentReturn): CallStatus | null {
+  if (error) {
+    return { text: error, isError: true };
+  }
+  if (agent.state === "failed") {
+    return { text: agent.failureReasons.join(", "), isError: true };
+  }
+  if (!agent.isConnected) {
+    return { text: "Connecting…", isError: false };
+  }
+  return null;
 }
