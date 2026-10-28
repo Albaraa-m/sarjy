@@ -8,9 +8,9 @@ from .llm_extractor import extract_changes
 
 logger = logging.getLogger("sarjy.memory")
 
-# Long calls are also remembered along the way, so the end-of-call extraction stays small and a
-# call that ends badly loses at most this many turns.
-CHECKPOINT_USER_TURNS = 10
+# Remembered after every user turn, so a fact is saved seconds after it's said and a redial right
+# after hanging up already sees it.
+CHECKPOINT_USER_TURNS = 1
 SPEAKERS = {"user": "User", "assistant": "Sarjy"}
 
 

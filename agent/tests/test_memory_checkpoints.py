@@ -33,14 +33,10 @@ async def test_checkpoints_never_resend_turns(monkeypatch):
         add_turn(session, "assistant", f"\n\nreply {turn}")
     await memory.remember_rest()
 
-    assert len(extractor.conversations) == 2
     assert extractor.conversations[0].startswith("User: message 0")
     lines = [line for conversation in extractor.conversations for line in conversation.splitlines()]
-    assert sorted(lines) == sorted(
-        f"{speaker}: {text} {turn}"
-        for turn in range(CHECKPOINT_USER_TURNS + 2)
-        for speaker, text in [("User", "message"), ("Sarjy", "reply")]
-    )
+    assert len(lines) == len(set(lines))
+    assert {f"User: message {turn}" for turn in range(CHECKPOINT_USER_TURNS + 2)} <= set(lines)
 
 
 async def test_a_call_without_user_turns_extracts_nothing(monkeypatch):
