@@ -13,9 +13,10 @@ logger = logging.getLogger("sarjy.memory")
 PROMPT = """You maintain a voice assistant's long-term memory of one user. You never answer the user.
 You get the facts already known and the latest turns of a conversation between the user and
 Sarjy, the assistant. Use Sarjy's lines only as context. Return the changes to make:
-- set: durable facts or preferences the user states about themselves (e.g. name, favorite color,
-  home city, foods they like or dislike). Keys are snake_case. For a fact that changes, reuse its
-  existing key with the new value. If the user corrects themselves, keep the final value.
+- set: every durable fact or preference the user states about themselves (e.g. name, job, favorite
+  color, home city, foods they like or dislike); one message can hold several. Keys are
+  snake_case. For a fact that changes, reuse its existing key with the new value. If the user
+  corrects themselves, keep the final value.
 - remove: keys of known facts the user contradicts or asks you to forget. When a new fact
   replaces an old one under a different key (dislikes_milk -> likes_milk), remove the old key.
 Store the user's name under "name". The assistant is named Sarjy (speech-to-text may spell it

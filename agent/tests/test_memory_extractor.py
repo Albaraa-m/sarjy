@@ -53,6 +53,13 @@ async def test_user_name_uses_the_name_key():
     assert facts.get("name") == "Albaraa"
 
 
+async def test_a_job_stated_with_a_name_is_saved_too():
+    # "I'm a <job>" right after a name was read as part of the introduction and dropped.
+    facts = await remember("User: My name is Sara and I'm a software engineer.", known={})
+    assert facts.get("name") == "Sara"
+    assert "software engineer" in facts.values()
+
+
 async def test_greeting_the_assistant_is_not_the_users_name():
     assert await remember("User: Hey, Sergei. What can you do?", known={}) == {}
 
