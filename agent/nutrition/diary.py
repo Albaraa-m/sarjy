@@ -1,0 +1,152 @@
+import json
+from collections.abc import Awaitable, Callable, Iterable
+from dataclasses import asdict, dataclass
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
+
+from . import db
+from .nutrition import Macros, Nutrition, Portion
+
+# "Today" is the user's day in Saudi Arabia, not the server's (UTC) day.
+TIMEZONE = ZoneInfo("Asia/Riyadh")
+# Demo targets, not personalized advice; the UI labels them as such.
+DAILY_TARGETS = Macros(calories=2200, protein_g=150, carbs_g=220, fat_g=70)
+
+
+@dataclass(frozen=True)
+class DailyIntake:
+    day: date
+    eaten: list[Portion]
+    pending: list[Portion]
+    totals: Macros
+    targets: Macros
+    remaining: Macros
+
+    def to_json(self) -> str:
+        """The shape the web "Today" panel parses (web/lib/parse-daily-intake.ts)."""
+        return json.dumps({**asdict(self), "day": self.day.isoformat()})
+
+
+class Diary:
+    """One user's food diary for today. Portions are first proposed (pending), and saved together
+    once confirmed. Today's eaten portions are kept in memory, so only confirming touches the
+    database. Every change is reported through `on_change`, e.g. to update the UI."""
+
+    def __init__(
+        self,
+        user_id: str,
+        nutrition: Nutrition,
+        on_change: Callable[[DailyIntake], Awaitable[None]],
+        day: date,
+        eaten: list[Portion],
+    ):
+        self.user_id = user_id
+        self.nutrition = nutrition
+        self._on_change = on_change
+        # A call that runs past midnight keeps logging to the day it started.
+        self.day = day
+        self._eaten = eaten
+        self._pending: list[Portion] = []
+
+    @classmethod
+    async def load(
+        cls,
+        user_id: str,
+        nutrition: Nutrition,
+        on_change: Callable[[DailyIntake], Awaitable[None]],
+    ) -> Diary:
+        day = today()
+        return cls(user_id, nutrition, on_change, day, await db.eaten_on(user_id, day))
+
+    async def propose(self, fdc_id: int, grams: float, name: str) -> DailyIntake | None:
+        """Adds a looked-up USDA food to the pending portions. None if it was never looked up."""
+        usda_food = self.nutrition.usda_food(fdc_id)
+        if usda_food is None:
+            return None
+        macros = usda_food.per_100g.scaled(grams)
+        return await self._add_pending(Portion(name, usda_food.description, grams, macros, "usda"))
+
+    async def propose_estimate(self, name: str, grams: float, macros: Macros) -> DailyIntake:
+        return await self._add_pending(Portion(name, None, grams, macros, "estimate"))
+
+    async def confirm(self) -> DailyIntake | None:
+        """Saves all pending portions. None if nothing is pending, so a repeated yes can't save
+        twice. If saving fails, the portions stay pending, so the user can say yes again."""
+        portions = self._pending
+        if not portions:
+            return None
+        # Taken before the await, so a parallel confirm call finds nothing to save.
+        self._pending = []
+        try:
+            await db.save(self.user_id, self.day, portions)
+        except Exception:
+            self._pending = portions + self._pending
+            raise
+        self._eaten.extend(portions)
+        return await self._changed()
+
+    async def cancel(self, name: str | None = None) -> DailyIntake | None:
+        """Drops the pending portion called `name` (its name or USDA description, any case), or
+        all pending portions when None. None if no pending portion has that name."""
+        if name is None:
+            self._pending = []
+        else:
+            kept = [portion for portion in self._pending if not _is_called(portion, name)]
+            if len(kept) == len(self._pending):
+                return None
+            self._pending = kept
+        return await self._changed()
+
+    def intake(self) -> DailyIntake:
+        totals = _sum(portion.macros for portion in self._eaten)
+        remaining = Macros(
+            calories=max(round(DAILY_TARGETS.calories - totals.calories, 1), 0),
+            protein_g=max(round(DAILY_TARGETS.protein_g - totals.protein_g, 1), 0),
+            carbs_g=max(round(DAILY_TARGETS.carbs_g - totals.carbs_g, 1), 0),
+            fat_g=max(round(DAILY_TARGETS.fat_g - totals.fat_g, 1), 0),
+        )
+        return DailyIntake(
+            self.day, list(self._eaten), list(self._pending), totals, DAILY_TARGETS, remaining
+        )
+
+    async def _add_pending(self, portion: Portion) -> DailyIntake:
+        # Proposing a pending food again replaces it ("actually, two eggs").
+        self._pending = [pending for pending in self._pending if not _same_food(pending, portion)]
+        self._pending.append(portion)
+        return await self._changed()
+
+    async def _changed(self) -> DailyIntake:
+        intake = self.intake()
+        await self._on_change(intake)
+        return intake
+
+
+def today() -> date:
+    return riyadh_day(datetime.now(UTC))
+
+
+def riyadh_day(instant: datetime) -> date:
+    return instant.astimezone(TIMEZONE).date()
+
+
+def _same_food(a: Portion, b: Portion) -> bool:
+    # The LLM may name the same USDA food differently ("Eggs", then "Scrambled eggs").
+    return (a.usda_description or a.name) == (b.usda_description or b.name)
+
+
+def _is_called(portion: Portion, name: str) -> bool:
+    # The LLM cancels by the name it gave the food ("Milk"), not USDA's ("Milk, whole").
+    names = (portion.name, portion.usda_description or "")
+    return name.casefold() in (known.casefold() for known in names)
+
+
+def _sum(all_macros: Iterable[Macros]) -> Macros:
+    total = Macros(0, 0, 0, 0)
+    for macros in all_macros:
+        total = Macros(
+            calories=round(total.calories + macros.calories, 1),
+            protein_g=round(total.protein_g + macros.protein_g, 1),
+            carbs_g=round(total.carbs_g + macros.carbs_g, 1),
+            fat_g=round(total.fat_g + macros.fat_g, 1),
+        )
+    return total

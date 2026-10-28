@@ -1,13 +1,13 @@
-from .food_log import DaySummary, FoodLog
-from .nutrition import FoodEntry, FoodMatch, Macros, Nutrition
-from .tools import NutritionTools
+from .diary import DailyIntake, Diary
+from .nutrition import Macros, Nutrition, Portion, UsdaFood
+from .tools import NutritionToolset
 
 __all__ = [
-    "DaySummary",
-    "FoodEntry",
-    "FoodLog",
-    "FoodMatch",
+    "DailyIntake",
+    "Diary",
     "Macros",
     "Nutrition",
-    "NutritionTools",
+    "NutritionToolset",
+    "Portion",
+    "UsdaFood",
 ]

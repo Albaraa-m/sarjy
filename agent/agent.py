@@ -6,7 +6,7 @@ from livekit.plugins import cartesia, deepgram, groq, openai
 
 import diagnostics
 from memory import UserMemory
-from nutrition import DaySummary, FoodLog, Nutrition, NutritionTools
+from nutrition import DailyIntake, Diary, Nutrition, NutritionToolset
 from sarjy import Sarjy
 from settings import settings
 
@@ -33,14 +33,14 @@ async def entrypoint(ctx: JobContext):
     logger.info("session started for user %s", user_id)
     memory = await UserMemory.load(user_id)
 
-    async def show_food_log(summary: DaySummary) -> None:
+    async def show_intake(intake: DailyIntake) -> None:
         # The web "Today" panel renders this attribute; a browser that (re)joins gets the latest.
-        await ctx.room.local_participant.set_attributes({"nutrition": summary.to_json()})
+        await ctx.room.local_participant.set_attributes({"nutrition": intake.to_json()})
 
     nutrition = Nutrition()
-    food_log = await FoodLog.load(user_id, nutrition, on_change=show_food_log)
+    diary = await Diary.load(user_id, nutrition, on_change=show_intake)
     # Before the voice session starts, so the panel fills in as Sarjy joins, not seconds later.
-    await show_food_log(food_log.summary())
+    await show_intake(diary.intake())
 
     # VAD (Silero) and turn detection (LiveKit turn detector) use framework defaults.
     session = AgentSession(
@@ -82,4 +82,4 @@ async def entrypoint(ctx: JobContext):
     memory.listen(session)
     ctx.add_shutdown_callback(memory.remember_rest)
     diagnostics.watch(session)
-    await session.start(agent=Sarjy(memory, NutritionTools(nutrition, food_log)), room=ctx.room)
+    await session.start(agent=Sarjy(memory, NutritionToolset(nutrition, diary)), room=ctx.room)

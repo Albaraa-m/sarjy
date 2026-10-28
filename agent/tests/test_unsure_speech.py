@@ -3,8 +3,8 @@ from livekit.agents import AgentSession, ChatMessage
 from livekit.agents.llm import ChatContext
 
 from memory import UserMemory
-from nutrition import DaySummary, FoodLog, Nutrition, NutritionTools
-from nutrition.food_log import today
+from nutrition import DailyIntake, Diary, Nutrition, NutritionToolset
+from nutrition.diary import today
 from sarjy import UNSURE_NOTE, Sarjy
 
 # A live call: Deepgram dropped an Arabic dish name and returned this at 67% confidence.
@@ -17,14 +17,14 @@ FOOD_TOOLS = {
 }
 
 
-async def ignore_ui(summary: DaySummary) -> None:
+async def ignore_ui(intake: DailyIntake) -> None:
     pass
 
 
 def sarjy() -> Sarjy:
     nutrition = Nutrition()
-    food_log = FoodLog("test-unsure", nutrition, ignore_ui, today(), [])
-    return Sarjy(UserMemory("test-unsure", {}), NutritionTools(nutrition, food_log))
+    diary = Diary("test-unsure", nutrition, ignore_ui, today(), [])
+    return Sarjy(UserMemory("test-unsure", {}), NutritionToolset(nutrition, diary))
 
 
 @pytest.mark.parametrize(("confidence", "noted"), [(0.67, True), (0.98, False), (None, False)])

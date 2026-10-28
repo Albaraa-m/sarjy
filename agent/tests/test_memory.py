@@ -2,11 +2,11 @@ from livekit.agents import AgentSession
 from livekit.plugins import openai
 
 from memory import UserMemory
-from nutrition import NutritionTools
+from nutrition import NutritionToolset
 from sarjy import Sarjy
 
 
-async def chat(llm: openai.LLM, user_id: str, tools: NutritionTools, text: str):
+async def chat(llm: openai.LLM, user_id: str, tools: NutritionToolset, text: str):
     """Runs one text turn in a new call, then remembers it as the end of a call does."""
     memory = await UserMemory.load(user_id)
     async with AgentSession(llm=llm) as session:

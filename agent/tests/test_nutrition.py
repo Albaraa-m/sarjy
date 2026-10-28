@@ -33,18 +33,18 @@ def test_scales_macros_from_100_grams():
     assert banana.scaled(118) == Macros(calories=105.0, protein_g=1.3, carbs_g=27.0, fat_g=0.4)
 
 
-async def test_remembers_matches_by_id():
+async def test_remembers_usda_foods_by_id():
     nutrition = Nutrition()
     result = await nutrition.lookup("banana", 118)
     first = result["matches"][0]
-    match = nutrition.match(first["id"])
-    assert match is not None
-    assert match.description == first["description"]
-    assert match.per_100g.scaled(118).calories == first["calories"]
+    usda_food = nutrition.usda_food(first["id"])
+    assert usda_food is not None
+    assert usda_food.description == first["description"]
+    assert usda_food.per_100g.scaled(118).calories == first["calories"]
 
 
-def test_unknown_match_id_is_none():
-    assert Nutrition().match(123) is None
+def test_unknown_fdc_id_is_none():
+    assert Nutrition().usda_food(123) is None
 
 
 async def test_prefers_sr_legacy_when_both_datasets_match():

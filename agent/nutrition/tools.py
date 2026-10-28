@@ -5,7 +5,7 @@ from dataclasses import asdict
 from livekit.agents import RunContext, function_tool, llm
 from livekit.agents.voice import SpeechHandle
 
-from .food_log import DaySummary, FoodLog
+from .diary import DailyIntake, Diary
 from .nutrition import Macros, Nutrition
 
 INSTRUCTIONS = """
@@ -75,15 +75,15 @@ FILLERS = [
 ]
 
 
-class NutritionTools(llm.Toolset):
+class NutritionToolset(llm.Toolset):
     """The nutrition tools the LLM can call, plus the instructions for using them."""
 
     instructions = INSTRUCTIONS
 
-    def __init__(self, nutrition: Nutrition, food_log: FoodLog):
+    def __init__(self, nutrition: Nutrition, diary: Diary):
         super().__init__(id="nutrition")
         self.nutrition = nutrition
-        self.food_log = food_log
+        self.diary = diary
         self._filler: SpeechHandle | None = None
 
     @function_tool
@@ -115,13 +115,13 @@ class NutritionTools(llm.Toolset):
             name: The food as the user would say it, shown on screen, in sentence case, e.g.
                 "Banana", "Big Mac", "Beef burrito"; never USDA's description.
         """
-        summary = await self.food_log.prepare(match_id, grams, name)
-        if summary is None:
+        intake = await self.diary.propose(match_id, grams, name)
+        if intake is None:
             return {
                 "status": "unknown_food",
                 "next": "Call lookup_nutrition, then use one of its ids.",
             }
-        return {"status": "pending", "pending": asdict(summary)["pending"]}
+        return {"status": "pending", "pending": asdict(intake)["pending"]}
 
     @function_tool
     async def prepare_estimated_food_log(
@@ -145,16 +145,16 @@ class NutritionTools(llm.Toolset):
             fat_g: Your estimate for that amount.
         """
         macros = Macros(calories, protein_g, carbs_g, fat_g)
-        summary = await self.food_log.prepare_estimate(food, grams, macros)
-        return {"status": "pending", "pending": asdict(summary)["pending"]}
+        intake = await self.diary.propose_estimate(food, grams, macros)
+        return {"status": "pending", "pending": asdict(intake)["pending"]}
 
     @function_tool
     async def confirm_food_log(self) -> dict:
         """Saves all pending foods. Call only after the user clearly says yes to logging them."""
-        summary = await self.food_log.confirm()
-        if summary is None:
+        intake = await self.diary.confirm()
+        if intake is None:
             return {"status": "nothing_pending"}
-        return {"status": "saved", **_day(summary)}
+        return {"status": "saved", **_day(intake)}
 
     @function_tool
     async def cancel_food_log(self, food: str = "") -> dict:
@@ -164,22 +164,22 @@ class NutritionTools(llm.Toolset):
             food: The name you gave the food in prepare_food_log, to drop just that one; empty
                 to drop all pending foods.
         """
-        summary = await self.food_log.cancel(food or None)
-        if summary is None:
-            pending = self.food_log.summary().pending
-            return {"status": "not_found", "pending": [entry.display_name for entry in pending]}
-        return {"status": "cancelled", "pending": [entry.display_name for entry in summary.pending]}
+        intake = await self.diary.cancel(food or None)
+        if intake is None:
+            pending = self.diary.intake().pending
+            return {"status": "not_found", "pending": [portion.name for portion in pending]}
+        return {"status": "cancelled", "pending": [portion.name for portion in intake.pending]}
 
     @function_tool
     async def get_daily_totals(self) -> dict:
         """Today's logged foods, totals, demo targets and what's remaining."""
-        return _day(self.food_log.summary())
+        return _day(self.diary.intake())
 
 
-def _day(summary: DaySummary) -> dict:
+def _day(intake: DailyIntake) -> dict:
     return {
-        "foods": [entry.food for entry in summary.entries],
-        "totals": asdict(summary.totals),
-        "targets": asdict(summary.targets),
-        "remaining": asdict(summary.remaining),
+        "foods": [portion.usda_description or portion.name for portion in intake.eaten],
+        "totals": asdict(intake.totals),
+        "targets": asdict(intake.targets),
+        "remaining": asdict(intake.remaining),
     }

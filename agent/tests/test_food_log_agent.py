@@ -5,17 +5,19 @@ from livekit.agents import AgentSession, RunResult
 from livekit.plugins import openai
 
 from memory import UserMemory
-from nutrition import DaySummary, FoodLog, FoodMatch, Macros, Nutrition, NutritionTools
+from nutrition import DailyIntake, Diary, Macros, Nutrition, NutritionToolset, UsdaFood
 from nutrition import db as nutrition_db
-from nutrition.food_log import today
+from nutrition.diary import today
 from sarjy import Sarjy
 
-BANANA = FoodMatch(id=1, description="Bananas, raw", per_100g=Macros(89, 1.09, 22.84, 0.33))
-RICE = FoodMatch(id=2, description="Rice, white, cooked", per_100g=Macros(130, 2.4, 28.6, 0.2))
-EGGS = FoodMatch(id=3, description="Egg, scrambled", per_100g=Macros(149, 10, 1.6, 11))
-TOAST = FoodMatch(id=4, description="Bread, whole wheat, toasted", per_100g=Macros(306, 13, 51, 4))
-MILK = FoodMatch(id=5, description="Milk, whole", per_100g=Macros(61, 3.2, 4.8, 3.3))
-# What the LLM may search for -> the one match the stub returns.
+BANANA = UsdaFood(fdc_id=1, description="Bananas, raw", per_100g=Macros(89, 1.09, 22.84, 0.33))
+RICE = UsdaFood(fdc_id=2, description="Rice, white, cooked", per_100g=Macros(130, 2.4, 28.6, 0.2))
+EGGS = UsdaFood(fdc_id=3, description="Egg, scrambled", per_100g=Macros(149, 10, 1.6, 11))
+TOAST = UsdaFood(
+    fdc_id=4, description="Bread, whole wheat, toasted", per_100g=Macros(306, 13, 51, 4)
+)
+MILK = UsdaFood(fdc_id=5, description="Milk, whole", per_100g=Macros(61, 3.2, 4.8, 3.3))
+# What the LLM may search for -> the one USDA food the stub returns.
 FOODS = {
     "banana": BANANA,
     "rice": RICE,
@@ -30,34 +32,34 @@ MEAL = "Breakfast was three eggs, two slices of toast and a cup of milk."
 class StubNutrition(Nutrition):
     """Knows only a few foods, so tests don't depend on USDA's ranking or uptime."""
 
-    async def lookup(self, food: str, grams: float) -> dict:
+    async def lookup(self, query: str, grams: float) -> dict:
         found = list(
-            {match.id: match for name, match in FOODS.items() if name in food.lower()}.values()
+            {food.fdc_id: food for name, food in FOODS.items() if name in query.lower()}.values()
         )
         if not found:
             return {"status": "not_found"}
-        self._matches.update({match.id: match for match in found})
+        self._usda_foods.update({food.fdc_id: food for food in found})
         return {
             "status": "found",
             "source": "usda",
             "grams": grams,
             "matches": [
-                {"id": m.id, "description": m.description, **vars(m.per_100g.scaled(grams))}
-                for m in found
+                {"id": f.fdc_id, "description": f.description, **vars(f.per_100g.scaled(grams))}
+                for f in found
             ],
         }
 
 
-async def ignore_ui(summary: DaySummary) -> None:
+async def ignore_ui(intake: DailyIntake) -> None:
     pass
 
 
 class Conversation:
     """One session where each `say` is a user turn; collects the tools Sarjy called."""
 
-    def __init__(self, session: AgentSession, food_log: FoodLog):
+    def __init__(self, session: AgentSession, diary: Diary):
         self.session = session
-        self.food_log = food_log
+        self.diary = diary
         self.calls: list[tuple[str, dict]] = []
 
     async def say(self, text: str) -> str:
@@ -77,12 +79,12 @@ class Conversation:
 @pytest.fixture
 async def conversation(llm: openai.LLM, user_id: str):
     nutrition = StubNutrition()
-    food_log = await FoodLog.load(user_id, nutrition, on_change=ignore_ui)
-    tools = NutritionTools(nutrition, food_log)
+    diary = await Diary.load(user_id, nutrition, on_change=ignore_ui)
+    tools = NutritionToolset(nutrition, diary)
     # Same tool-step limit as agent.py, so a meal's lookups and prepares fit in one turn.
     async with AgentSession(llm=llm, max_tool_steps=5) as session:
         await session.start(Sarjy(await UserMemory.load(user_id), tools))
-        yield Conversation(session, food_log)
+        yield Conversation(session, diary)
 
 
 async def test_a_question_is_not_logged(conversation):
@@ -94,9 +96,9 @@ async def test_a_question_is_not_logged(conversation):
 async def test_eating_something_prepares_a_log(conversation, user_id):
     reply = await conversation.say("I had a banana this morning.")
     [prepared] = conversation.called("prepare_food_log")
-    assert prepared["match_id"] == BANANA.id
+    assert prepared["match_id"] == BANANA.fdc_id
     assert "?" in reply, reply
-    assert await nutrition_db.foods_on(user_id, today()) == []
+    assert await nutrition_db.eaten_on(user_id, today()) == []
 
 
 async def test_missing_amount_is_asked_first(conversation):
@@ -109,15 +111,15 @@ async def test_yes_saves_it(conversation, user_id):
     await conversation.say("I had a banana this morning.")
     await conversation.say("Yes, log it.")
     assert conversation.called("confirm_food_log")
-    [saved] = await nutrition_db.foods_on(user_id, today())
-    assert saved.food == BANANA.description
+    [saved] = await nutrition_db.eaten_on(user_id, today())
+    assert saved.usda_description == BANANA.description
 
 
 async def test_no_saves_nothing(conversation, user_id):
     await conversation.say("I had a banana this morning.")
     await conversation.say("No, don't log it.")
     assert not conversation.called("confirm_food_log")
-    assert await nutrition_db.foods_on(user_id, today()) == []
+    assert await nutrition_db.eaten_on(user_id, today()) == []
 
 
 async def test_correcting_the_amount_prepares_again(conversation):
@@ -143,17 +145,17 @@ async def test_remaining_protein_matches_the_log(conversation):
 async def test_a_meal_prepares_every_food(conversation, user_id):
     reply = await conversation.say(MEAL)
     prepared = {arguments["match_id"] for arguments in conversation.called("prepare_food_log")}
-    assert prepared == {EGGS.id, TOAST.id, MILK.id}
+    assert prepared == {EGGS.fdc_id, TOAST.fdc_id, MILK.fdc_id}
     assert not conversation.called("confirm_food_log")
     assert "?" in reply, reply
-    assert await nutrition_db.foods_on(user_id, today()) == []
+    assert await nutrition_db.eaten_on(user_id, today()) == []
 
 
 async def test_one_yes_saves_the_whole_meal(conversation, user_id):
     await conversation.say(MEAL)
     await conversation.say("Yes.")
-    saved = await nutrition_db.foods_on(user_id, today())
-    assert sorted(entry.food for entry in saved) == sorted(
+    saved = await nutrition_db.eaten_on(user_id, today())
+    assert sorted(portion.usda_description or "" for portion in saved) == sorted(
         [EGGS.description, TOAST.description, MILK.description]
     )
 
@@ -161,19 +163,21 @@ async def test_one_yes_saves_the_whole_meal(conversation, user_id):
 async def test_yes_but_without_one_food(conversation, user_id):
     await conversation.say(MEAL)
     await conversation.say("Yes, but no milk.")
-    saved = await nutrition_db.foods_on(user_id, today())
-    assert sorted(entry.food for entry in saved) == sorted([EGGS.description, TOAST.description])
+    saved = await nutrition_db.eaten_on(user_id, today())
+    assert sorted(portion.usda_description or "" for portion in saved) == sorted(
+        [EGGS.description, TOAST.description]
+    )
 
 
 async def test_correcting_one_food_keeps_the_rest(conversation):
     await conversation.say(MEAL)
     eggs_before = next(
-        e for e in conversation.food_log.summary().pending if e.food == EGGS.description
+        e for e in conversation.diary.intake().pending if e.usda_description == EGGS.description
     )
     await conversation.say("Actually, it was two eggs.")
-    pending = conversation.food_log.summary().pending
-    assert sorted(entry.food for entry in pending) == sorted(
+    pending = conversation.diary.intake().pending
+    assert sorted(portion.usda_description or "" for portion in pending) == sorted(
         [EGGS.description, TOAST.description, MILK.description]
     )
-    eggs_after = next(e for e in pending if e.food == EGGS.description)
+    eggs_after = next(e for e in pending if e.usda_description == EGGS.description)
     assert eggs_after.grams < eggs_before.grams

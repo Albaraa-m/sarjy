@@ -5,7 +5,7 @@ from livekit.agents import Agent, FlushSentinel, ModelSettings, llm
 
 import diagnostics
 from memory import UserMemory
-from nutrition import NutritionTools
+from nutrition import NutritionToolset
 
 PERSONA = """You are Sarjy, a personal assistant. Talk like a normal person in a relaxed conversation.
 
@@ -54,7 +54,7 @@ GREETINGS_BY_NAME = [
 class Sarjy(Agent):
     """Sarjy's persona, plus the abilities each module brings."""
 
-    def __init__(self, memory: UserMemory, nutrition: NutritionTools):
+    def __init__(self, memory: UserMemory, nutrition: NutritionToolset):
         super().__init__(
             instructions=PERSONA + nutrition.instructions + memory.as_prompt(),
             tools=[nutrition],

@@ -4,7 +4,7 @@ import pytest
 from livekit.plugins import openai
 
 import database
-from nutrition import DaySummary, FoodLog, Nutrition, NutritionTools
+from nutrition import DailyIntake, Diary, Nutrition, NutritionToolset
 from settings import settings
 
 
@@ -34,11 +34,11 @@ async def user_id():
     await pool.execute("delete from food_log where user_id = $1", user_id)
 
 
-async def ignore_ui(summary: DaySummary) -> None:
+async def ignore_ui(intake: DailyIntake) -> None:
     pass
 
 
 @pytest.fixture
-async def nutrition_tools(user_id) -> NutritionTools:
+async def nutrition_tools(user_id) -> NutritionToolset:
     nutrition = Nutrition()
-    return NutritionTools(nutrition, await FoodLog.load(user_id, nutrition, on_change=ignore_ui))
+    return NutritionToolset(nutrition, await Diary.load(user_id, nutrition, on_change=ignore_ui))

@@ -1,13 +1,13 @@
-import { type FoodEntry } from "@/lib/parse-nutrition-summary";
+import { type Portion } from "@/lib/parse-daily-intake";
 import { cn } from "@/lib/utils";
 
-type FoodEntryRowProps = {
-  entry: FoodEntry;
+type PortionRowProps = {
+  portion: Portion;
   /** Slides in with a brief highlight, for a food logged during this call. */
   isNew: boolean;
 };
 
-export function FoodEntryRow({ entry, isNew }: FoodEntryRowProps) {
+export function PortionRow({ portion, isNew }: PortionRowProps) {
   return (
     <li className="py-1">
       <div
@@ -17,14 +17,14 @@ export function FoodEntryRow({ entry, isNew }: FoodEntryRowProps) {
         )}
       >
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="break-words">{entry["display_name"]}</span>
+          <span className="break-words">{portion.name}</span>
           <span className="flex items-center gap-2 text-caption text-fg-faint">
-            {Math.round(entry.grams)} g
-            <SourceTag source={entry.source} />
+            {Math.round(portion.grams)} g
+            <SourceTag source={portion.source} />
           </span>
         </div>
         <span className="shrink-0 text-right">
-          {Math.round(entry.macros.calories).toLocaleString("en-US")}
+          {Math.round(portion.macros.calories).toLocaleString("en-US")}
           <span className="text-fg-faint"> kcal</span>
         </span>
       </div>
@@ -32,7 +32,7 @@ export function FoodEntryRow({ entry, isNew }: FoodEntryRowProps) {
   );
 }
 
-function SourceTag({ source }: { source: FoodEntry["source"] }) {
+function SourceTag({ source }: { source: Portion["source"] }) {
   if (source === "usda") {
     return <span className="rounded-tag bg-inset px-1.5 py-px text-fg-muted">USDA</span>;
   }
