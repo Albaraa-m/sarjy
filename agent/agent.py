@@ -31,8 +31,6 @@ async def entrypoint(ctx: JobContext):
     user_id = await get_user_id(ctx)
     logger.info("session started for user %s", user_id)
     memory = await UserMemory.load(user_id)
-    # Let the last turns finish saving before the job exits.
-    ctx.add_shutdown_callback(memory.wait_for_pending)
 
     async def show_food_log(summary: DaySummary) -> None:
         # The web "Today" panel renders this attribute; a browser that (re)joins gets the latest.
@@ -68,5 +66,6 @@ async def entrypoint(ctx: JobContext):
         max_tool_steps=5,
     )
     memory.listen(session)
+    ctx.add_shutdown_callback(memory.remember_rest)
     diagnostics.watch(session)
     await session.start(agent=Sarjy(memory, NutritionTools(nutrition, food_log)), room=ctx.room)
