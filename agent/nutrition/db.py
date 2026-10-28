@@ -2,7 +2,7 @@ from datetime import date
 
 import database
 
-from .nutrition import Macros, Portion
+from .models import Macros, Portion
 
 
 async def save(user_id: str, day: date, portions: list[Portion]) -> None:
@@ -51,7 +51,12 @@ async def eaten_on(user_id: str, day: date) -> list[Portion]:
             name=row["display_name"] or row["food"],
             usda_description=row["food"] if row["source"] == "usda" else None,
             grams=row["grams"],
-            macros=Macros(row["calories"], row["protein_g"], row["carbs_g"], row["fat_g"]),
+            macros=Macros(
+                calories=row["calories"],
+                protein_g=row["protein_g"],
+                carbs_g=row["carbs_g"],
+                fat_g=row["fat_g"],
+            ),
             source=row["source"],
         )
         for row in rows

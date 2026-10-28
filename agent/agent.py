@@ -35,7 +35,7 @@ async def entrypoint(ctx: JobContext):
 
     async def show_intake(intake: DailyIntake) -> None:
         # The web "Today" panel renders this attribute; a browser that (re)joins gets the latest.
-        await ctx.room.local_participant.set_attributes({"nutrition": intake.to_json()})
+        await ctx.room.local_participant.set_attributes({"nutrition": intake.model_dump_json()})
 
     nutrition = Nutrition()
     diary = await Diary.load(user_id, nutrition, on_change=show_intake)

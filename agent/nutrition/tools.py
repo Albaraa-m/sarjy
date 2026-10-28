@@ -1,12 +1,12 @@
 import asyncio
 import random
-from dataclasses import asdict
 
 from livekit.agents import RunContext, function_tool, llm
 from livekit.agents.voice import SpeechHandle
 
-from .diary import DailyIntake, Diary
-from .nutrition import Macros, Nutrition
+from .diary import Diary
+from .models import DailyIntake, Macros
+from .nutrition import Nutrition
 
 INSTRUCTIONS = """
 - Nutrition: calories and macros for foods.
@@ -121,7 +121,7 @@ class NutritionToolset(llm.Toolset):
                 "status": "unknown_food",
                 "next": "Call lookup_nutrition, then use one of its fdc_ids.",
             }
-        return {"status": "pending", "pending": asdict(intake)["pending"]}
+        return {"status": "pending", "pending": intake.model_dump()["pending"]}
 
     @function_tool
     async def propose_estimated_portion(
@@ -144,9 +144,9 @@ class NutritionToolset(llm.Toolset):
             carbs_g: Your estimate for that amount.
             fat_g: Your estimate for that amount.
         """
-        macros = Macros(calories, protein_g, carbs_g, fat_g)
+        macros = Macros(calories=calories, protein_g=protein_g, carbs_g=carbs_g, fat_g=fat_g)
         intake = await self.diary.propose_estimate(name, grams, macros)
-        return {"status": "pending", "pending": asdict(intake)["pending"]}
+        return {"status": "pending", "pending": intake.model_dump()["pending"]}
 
     @function_tool
     async def confirm_portions(self) -> dict:
@@ -179,7 +179,7 @@ class NutritionToolset(llm.Toolset):
 def _day(intake: DailyIntake) -> dict:
     return {
         "foods": [portion.usda_description or portion.name for portion in intake.eaten],
-        "totals": asdict(intake.totals),
-        "targets": asdict(intake.targets),
-        "remaining": asdict(intake.remaining),
+        "totals": intake.totals.model_dump(),
+        "targets": intake.targets.model_dump(),
+        "remaining": intake.remaining.model_dump(),
     }

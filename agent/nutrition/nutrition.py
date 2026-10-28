@@ -1,73 +1,15 @@
 import logging
 import time
-from dataclasses import asdict, dataclass
-from typing import Literal
 
 import httpx
 
 from . import usda
+from .models import Macros, UsdaFood
 
 logger = logging.getLogger("sarjy.nutrition")
 
 # USDA nutrient numbers; SR Legacy and FNDDS foods report every nutrient per 100 g.
 NUTRIENTS = {"208": "calories", "203": "protein_g", "205": "carbs_g", "204": "fat_g"}
-
-
-@dataclass(frozen=True)
-class Macros:
-    calories: float
-    protein_g: float
-    carbs_g: float
-    fat_g: float
-
-    def scaled(self, grams: float) -> Macros:
-        """Scales macros given per 100 g to `grams`, rounded to 0.1."""
-        factor = grams / 100
-        return Macros(
-            calories=round(self.calories * factor, 1),
-            protein_g=round(self.protein_g * factor, 1),
-            carbs_g=round(self.carbs_g * factor, 1),
-            fat_g=round(self.fat_g * factor, 1),
-        )
-
-    def __add__(self, other: Macros) -> Macros:
-        return Macros(
-            calories=round(self.calories + other.calories, 1),
-            protein_g=round(self.protein_g + other.protein_g, 1),
-            carbs_g=round(self.carbs_g + other.carbs_g, 1),
-            fat_g=round(self.fat_g + other.fat_g, 1),
-        )
-
-    def remaining_after(self, eaten: Macros) -> Macros:
-        """What's left of these targets after `eaten`, never below zero."""
-        return Macros(
-            calories=max(round(self.calories - eaten.calories, 1), 0),
-            protein_g=max(round(self.protein_g - eaten.protein_g, 1), 0),
-            carbs_g=max(round(self.carbs_g - eaten.carbs_g, 1), 0),
-            fat_g=max(round(self.fat_g - eaten.fat_g, 1), 0),
-        )
-
-
-@dataclass(frozen=True)
-class UsdaFood:
-    fdc_id: int
-    description: str
-    per_100g: Macros
-
-
-Source = Literal["usda", "estimate"]
-
-
-@dataclass(frozen=True)
-class Portion:
-    """An amount of something the user ate, with its macros for that amount."""
-
-    # What the user and the UI call it: "Banana", not USDA's "Bananas, raw".
-    name: str
-    usda_description: str | None
-    grams: float
-    macros: Macros
-    source: Source
 
 
 class Nutrition:
@@ -101,7 +43,7 @@ class Nutrition:
                 {
                     "fdc_id": usda_food.fdc_id,
                     "description": usda_food.description,
-                    **asdict(usda_food.per_100g.scaled(grams)),
+                    **usda_food.per_100g.scaled(grams).model_dump(),
                 }
                 for usda_food in usda_foods
             ],

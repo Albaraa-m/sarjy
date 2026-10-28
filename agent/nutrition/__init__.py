@@ -1,5 +1,6 @@
-from .diary import DailyIntake, Diary
-from .nutrition import Macros, Nutrition, Portion, UsdaFood
+from .diary import Diary
+from .models import DailyIntake, Macros, Portion, UsdaFood
+from .nutrition import Nutrition
 from .tools import NutritionToolset
 
 __all__ = [

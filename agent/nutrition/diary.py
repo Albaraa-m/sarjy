@@ -1,31 +1,15 @@
-import json
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from . import db
-from .nutrition import Macros, Nutrition, Portion
+from .models import NO_MACROS, DailyIntake, Macros, Portion
+from .nutrition import Nutrition
 
 # "Today" is the user's day in Saudi Arabia, not the server's (UTC) day.
 TIMEZONE = ZoneInfo("Asia/Riyadh")
 # Demo targets, not personalized advice; the UI labels them as such.
 DAILY_TARGETS = Macros(calories=2200, protein_g=150, carbs_g=220, fat_g=70)
-NO_MACROS = Macros(calories=0, protein_g=0, carbs_g=0, fat_g=0)
-
-
-@dataclass(frozen=True)
-class DailyIntake:
-    day: date
-    eaten: list[Portion]
-    pending: list[Portion]
-    totals: Macros
-    targets: Macros
-    remaining: Macros
-
-    def to_json(self) -> str:
-        """The shape the web "Today" panel parses (web/lib/parse-daily-intake.ts)."""
-        return json.dumps({**asdict(self), "day": self.day.isoformat()})
 
 
 class Diary:
@@ -65,10 +49,20 @@ class Diary:
         if usda_food is None:
             return None
         macros = usda_food.per_100g.scaled(grams)
-        return await self._add_pending(Portion(name, usda_food.description, grams, macros, "usda"))
+        return await self._add_pending(
+            Portion(
+                name=name,
+                usda_description=usda_food.description,
+                grams=grams,
+                macros=macros,
+                source="usda",
+            )
+        )
 
     async def propose_estimate(self, name: str, grams: float, macros: Macros) -> DailyIntake:
-        return await self._add_pending(Portion(name, None, grams, macros, "estimate"))
+        return await self._add_pending(
+            Portion(name=name, usda_description=None, grams=grams, macros=macros, source="estimate")
+        )
 
     async def confirm(self) -> DailyIntake | None:
         """Saves all pending portions. None if nothing is pending, so a repeated yes can't save
@@ -101,12 +95,12 @@ class Diary:
     def intake(self) -> DailyIntake:
         totals = sum((portion.macros for portion in self._eaten), NO_MACROS)
         return DailyIntake(
-            self.day,
-            list(self._eaten),
-            list(self._pending),
-            totals,
-            DAILY_TARGETS,
-            DAILY_TARGETS.remaining_after(totals),
+            day=self.day,
+            eaten=list(self._eaten),
+            pending=list(self._pending),
+            totals=totals,
+            targets=DAILY_TARGETS,
+            remaining=DAILY_TARGETS.remaining_after(totals),
         )
 
     async def _add_pending(self, portion: Portion) -> DailyIntake:

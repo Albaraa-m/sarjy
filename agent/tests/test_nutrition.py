@@ -29,13 +29,17 @@ async def test_reports_unavailable_when_api_fails(monkeypatch):
 
 
 def test_adds_macros_rounded_to_a_tenth():
-    assert Macros(0.1, 1.0, 2.0, 3.0) + Macros(0.2, 1.05, 0, 0) == Macros(0.3, 2.0, 2.0, 3.0)
+    assert Macros(calories=0.1, protein_g=1.0, carbs_g=2.0, fat_g=3.0) + Macros(
+        calories=0.2, protein_g=1.05, carbs_g=0, fat_g=0
+    ) == Macros(calories=0.3, protein_g=2.0, carbs_g=2.0, fat_g=3.0)
 
 
 def test_remaining_never_goes_below_zero():
     targets = Macros(calories=2200, protein_g=150, carbs_g=220, fat_g=70)
     eaten = Macros(calories=2500, protein_g=40.25, carbs_g=220, fat_g=10)
-    assert targets.remaining_after(eaten) == Macros(0, 109.8, 0, 60)
+    assert targets.remaining_after(eaten) == Macros(
+        calories=0, protein_g=109.8, carbs_g=0, fat_g=60
+    )
 
 
 def test_scales_macros_from_100_grams():

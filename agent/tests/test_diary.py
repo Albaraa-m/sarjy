@@ -4,15 +4,26 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from nutrition import Macros, Nutrition, Portion, UsdaFood
+from nutrition import DailyIntake, Diary, Macros, Nutrition, Portion, UsdaFood
 from nutrition import db as nutrition_db
-from nutrition.diary import DAILY_TARGETS, DailyIntake, Diary, riyadh_day, today
+from nutrition.diary import DAILY_TARGETS, riyadh_day, today
+from nutrition.models import NO_MACROS
 
-EGGS = UsdaFood(fdc_id=1, description="Egg, scrambled", per_100g=Macros(149, 10, 1.6, 11))
-TOAST = UsdaFood(
-    fdc_id=2, description="Bread, whole wheat, toasted", per_100g=Macros(306, 13, 51, 4)
+EGGS = UsdaFood(
+    fdc_id=1,
+    description="Egg, scrambled",
+    per_100g=Macros(calories=149, protein_g=10, carbs_g=1.6, fat_g=11),
 )
-MILK = UsdaFood(fdc_id=3, description="Milk, whole", per_100g=Macros(61, 3.2, 4.8, 3.3))
+TOAST = UsdaFood(
+    fdc_id=2,
+    description="Bread, whole wheat, toasted",
+    per_100g=Macros(calories=306, protein_g=13, carbs_g=51, fat_g=4),
+)
+MILK = UsdaFood(
+    fdc_id=3,
+    description="Milk, whole",
+    per_100g=Macros(calories=61, protein_g=3.2, carbs_g=4.8, fat_g=3.3),
+)
 
 
 class StubNutrition(Nutrition):
@@ -160,11 +171,13 @@ async def test_name_and_usda_description_are_saved(diary, user_id):
 
 
 async def test_estimate_is_saved_as_estimate(diary, user_id):
-    await diary.propose_estimate("Al Baik broast", 400, Macros(900, 50, 60, 50))
+    await diary.propose_estimate(
+        "Al Baik broast", 400, Macros(calories=900, protein_g=50, carbs_g=60, fat_g=50)
+    )
     await diary.confirm()
     [saved] = await nutrition_db.eaten_on(user_id, today())
     assert saved.source == "estimate"
-    assert saved.macros == Macros(900, 50, 60, 50)
+    assert saved.macros == Macros(calories=900, protein_g=50, carbs_g=60, fat_g=50)
 
 
 async def test_totals_and_remaining(diary):
@@ -172,7 +185,7 @@ async def test_totals_and_remaining(diary):
     await diary.propose(MILK.fdc_id, 100, "Milk")
     intake = await diary.confirm()
     assert intake is not None
-    assert intake.totals == Macros(210, 13.2, 6.4, 14.3)
+    assert intake.totals == Macros(calories=210, protein_g=13.2, carbs_g=6.4, fat_g=14.3)
     assert intake.remaining.calories == DAILY_TARGETS.calories - 210
 
 
@@ -186,7 +199,13 @@ async def test_reports_every_change(diary, changes):
 
 
 async def test_load_starts_from_todays_saved_portions(user_id):
-    milk = Portion("Milk", MILK.description, 244, MILK.per_100g.scaled(244), "usda")
+    milk = Portion(
+        name="Milk",
+        usda_description=MILK.description,
+        grams=244,
+        macros=MILK.per_100g.scaled(244),
+        source="usda",
+    )
     await nutrition_db.save(user_id, today(), [milk])
 
     async def ignore(intake: DailyIntake) -> None:
@@ -202,11 +221,22 @@ def test_today_is_the_riyadh_day():
 
 
 def test_intake_json_shape():
-    milk = Portion("Milk", "Milk, whole", 244, Macros(149, 7.8, 11.7, 8.1), "usda")
-    intake = DailyIntake(
-        date(2026, 10, 27), [], [milk], Macros(0, 0, 0, 0), DAILY_TARGETS, DAILY_TARGETS
+    milk = Portion(
+        name="Milk",
+        usda_description="Milk, whole",
+        grams=244,
+        macros=Macros(calories=149, protein_g=7.8, carbs_g=11.7, fat_g=8.1),
+        source="usda",
     )
-    assert json.loads(intake.to_json()) == {
+    intake = DailyIntake(
+        day=date(2026, 10, 27),
+        eaten=[],
+        pending=[milk],
+        totals=NO_MACROS,
+        targets=DAILY_TARGETS,
+        remaining=DAILY_TARGETS,
+    )
+    assert json.loads(intake.model_dump_json()) == {
         "day": "2026-10-27",
         "eaten": [],
         "pending": [

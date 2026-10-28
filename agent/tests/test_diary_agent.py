@@ -10,13 +10,31 @@ from nutrition import db as nutrition_db
 from nutrition.diary import today
 from sarjy import Sarjy
 
-BANANA = UsdaFood(fdc_id=1, description="Bananas, raw", per_100g=Macros(89, 1.09, 22.84, 0.33))
-RICE = UsdaFood(fdc_id=2, description="Rice, white, cooked", per_100g=Macros(130, 2.4, 28.6, 0.2))
-EGGS = UsdaFood(fdc_id=3, description="Egg, scrambled", per_100g=Macros(149, 10, 1.6, 11))
-TOAST = UsdaFood(
-    fdc_id=4, description="Bread, whole wheat, toasted", per_100g=Macros(306, 13, 51, 4)
+BANANA = UsdaFood(
+    fdc_id=1,
+    description="Bananas, raw",
+    per_100g=Macros(calories=89, protein_g=1.09, carbs_g=22.84, fat_g=0.33),
 )
-MILK = UsdaFood(fdc_id=5, description="Milk, whole", per_100g=Macros(61, 3.2, 4.8, 3.3))
+RICE = UsdaFood(
+    fdc_id=2,
+    description="Rice, white, cooked",
+    per_100g=Macros(calories=130, protein_g=2.4, carbs_g=28.6, fat_g=0.2),
+)
+EGGS = UsdaFood(
+    fdc_id=3,
+    description="Egg, scrambled",
+    per_100g=Macros(calories=149, protein_g=10, carbs_g=1.6, fat_g=11),
+)
+TOAST = UsdaFood(
+    fdc_id=4,
+    description="Bread, whole wheat, toasted",
+    per_100g=Macros(calories=306, protein_g=13, carbs_g=51, fat_g=4),
+)
+MILK = UsdaFood(
+    fdc_id=5,
+    description="Milk, whole",
+    per_100g=Macros(calories=61, protein_g=3.2, carbs_g=4.8, fat_g=3.3),
+)
 # What the LLM may search for -> the one USDA food the stub returns.
 FOODS = {
     "banana": BANANA,
@@ -44,7 +62,11 @@ class StubNutrition(Nutrition):
             "source": "usda",
             "grams": grams,
             "foods": [
-                {"fdc_id": f.fdc_id, "description": f.description, **vars(f.per_100g.scaled(grams))}
+                {
+                    "fdc_id": f.fdc_id,
+                    "description": f.description,
+                    **f.per_100g.scaled(grams).model_dump(),
+                }
                 for f in found
             ],
         }
