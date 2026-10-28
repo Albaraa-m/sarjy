@@ -161,11 +161,14 @@ class NutritionTools(llm.Toolset):
         """Drops pending foods the user doesn't want logged.
 
         Args:
-            food: The pending food's name, exactly as prepare_food_log returned it, to drop just
-                that one; empty to drop all pending foods.
+            food: The name you gave the food in prepare_food_log, to drop just that one; empty
+                to drop all pending foods.
         """
         summary = await self.food_log.cancel(food or None)
-        return {"status": "cancelled", "pending": [entry.food for entry in summary.pending]}
+        if summary is None:
+            pending = self.food_log.summary().pending
+            return {"status": "not_found", "pending": [entry.display_name for entry in pending]}
+        return {"status": "cancelled", "pending": [entry.display_name for entry in summary.pending]}
 
     @function_tool
     async def get_daily_totals(self) -> dict:

@@ -87,12 +87,16 @@ class FoodLog:
         self._entries.extend(entries)
         return await self._changed()
 
-    async def cancel(self, food: str | None = None) -> DaySummary:
-        """Drops the pending food named `food`, or all pending foods when None."""
+    async def cancel(self, food: str | None = None) -> DaySummary | None:
+        """Drops the pending food named `food` (display name or USDA description, any case), or
+        all pending foods when None. None if no pending food has that name."""
         if food is None:
             self._pending = []
         else:
-            self._pending = [entry for entry in self._pending if entry.food != food]
+            kept = [entry for entry in self._pending if not _is_named(entry, food)]
+            if len(kept) == len(self._pending):
+                return None
+            self._pending = kept
         return await self._changed()
 
     def summary(self) -> DaySummary:
@@ -125,6 +129,11 @@ def today() -> date:
 
 def riyadh_day(instant: datetime) -> date:
     return instant.astimezone(TIMEZONE).date()
+
+
+def _is_named(entry: FoodEntry, name: str) -> bool:
+    # The LLM cancels by the name it gave the food ("Milk"), not USDA's ("Milk, whole").
+    return name.casefold() in (entry.display_name.casefold(), entry.food.casefold())
 
 
 def _sum(all_macros: Iterable[Macros]) -> Macros:

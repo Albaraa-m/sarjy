@@ -124,6 +124,20 @@ async def test_cancel_one_food_keeps_the_others(food_log, user_id):
     assert foods(saved) == [EGGS.description, TOAST.description]
 
 
+async def test_cancel_by_the_name_sarjy_gave_it(food_log, user_id):
+    await prepare_breakfast(food_log)
+    await food_log.cancel("milk")
+    await food_log.confirm()
+    saved = await nutrition_db.foods_on(user_id, today())
+    assert foods(saved) == [EGGS.description, TOAST.description]
+
+
+async def test_cancel_an_unknown_name_keeps_everything(food_log):
+    await prepare_breakfast(food_log)
+    assert await food_log.cancel("Orange juice") is None
+    assert len(food_log.summary().pending) == 3
+
+
 async def test_cancel_all(food_log, user_id):
     await prepare_breakfast(food_log)
     summary = await food_log.cancel()
