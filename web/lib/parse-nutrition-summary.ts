@@ -2,14 +2,14 @@ import { z } from "zod";
 
 const MacrosSchema = z.object({
   calories: z.number(),
-  protein_g: z.number(),
-  carbs_g: z.number(),
-  fat_g: z.number(),
+  "protein_g": z.number(),
+  "carbs_g": z.number(),
+  "fat_g": z.number(),
 });
 
 const FoodEntrySchema = z.object({
   food: z.string(),
-  display_name: z.string(),
+  "display_name": z.string(),
   grams: z.number(),
   macros: MacrosSchema,
   source: z.enum(["usda", "estimate"]),

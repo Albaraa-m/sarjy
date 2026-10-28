@@ -17,7 +17,7 @@ const MACROS = [
   { key: "fat_g", label: "Fat" },
 ] as const satisfies readonly { key: keyof Macros; label: string }[];
 
-const NO_MACROS: Macros = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+const NO_MACROS: Macros = { calories: 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0 };
 // Shown until the agent publishes today's log, so the panel keeps its shape and counts up from 0.
 const NOTHING_YET: NutritionSummary = {
   day: "",
@@ -208,7 +208,7 @@ function EntryRow({ entry, isNew }: { entry: FoodEntry; isNew: boolean }) {
         )}
       >
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="break-words">{entry.display_name}</span>
+          <span className="break-words">{entry["display_name"]}</span>
           <span className="flex items-center gap-2 text-caption text-fg-faint">
             {Math.round(entry.grams)} g
             <SourceTag source={entry.source} />
