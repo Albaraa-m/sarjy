@@ -2,7 +2,7 @@
 
 A voice assistant that remembers you and tracks what you eat, with every number from the USDA.
 
-**Live:** https://sarjy-five.vercel.app/ · **Walkthrough:** _Loom link coming soon_
+**Live:** https://sarjy-five.vercel.app/ · **Demo:** https://www.loom.com/share/d23a02610fa44971a5cf4dad72ceb191
 
 ![Sarjy logging breakfast: the voice visual and today's food log](docs/main-screen.png)
 
