@@ -43,8 +43,8 @@ class StubNutrition(Nutrition):
             "status": "found",
             "source": "usda",
             "grams": grams,
-            "matches": [
-                {"id": f.fdc_id, "description": f.description, **vars(f.per_100g.scaled(grams))}
+            "foods": [
+                {"fdc_id": f.fdc_id, "description": f.description, **vars(f.per_100g.scaled(grams))}
                 for f in found
             ],
         }
@@ -81,7 +81,7 @@ async def conversation(llm: openai.LLM, user_id: str):
     nutrition = StubNutrition()
     diary = await Diary.load(user_id, nutrition, on_change=ignore_ui)
     tools = NutritionToolset(nutrition, diary)
-    # Same tool-step limit as agent.py, so a meal's lookups and prepares fit in one turn.
+    # Same tool-step limit as agent.py, so a meal's lookups and proposals fit in one turn.
     async with AgentSession(llm=llm, max_tool_steps=5) as session:
         await session.start(Sarjy(await UserMemory.load(user_id), tools))
         yield Conversation(session, diary)
@@ -90,27 +90,27 @@ async def conversation(llm: openai.LLM, user_id: str):
 async def test_a_question_is_not_logged(conversation):
     await conversation.say("How many calories are in 118 grams of banana?")
     assert conversation.called("lookup_nutrition")
-    assert not conversation.called("prepare_food_log")
+    assert not conversation.called("propose_portion")
 
 
-async def test_eating_something_prepares_a_log(conversation, user_id):
+async def test_eating_something_proposes_a_portion(conversation, user_id):
     reply = await conversation.say("I had a banana this morning.")
-    [prepared] = conversation.called("prepare_food_log")
-    assert prepared["match_id"] == BANANA.fdc_id
+    [proposed] = conversation.called("propose_portion")
+    assert proposed["fdc_id"] == BANANA.fdc_id
     assert "?" in reply, reply
     assert await nutrition_db.eaten_on(user_id, today()) == []
 
 
 async def test_missing_amount_is_asked_first(conversation):
     reply = await conversation.say("I ate some rice.")
-    assert not conversation.called("prepare_food_log")
+    assert not conversation.called("propose_portion")
     assert "?" in reply, reply
 
 
 async def test_yes_saves_it(conversation, user_id):
     await conversation.say("I had a banana this morning.")
     await conversation.say("Yes, log it.")
-    assert conversation.called("confirm_food_log")
+    assert conversation.called("confirm_portions")
     [saved] = await nutrition_db.eaten_on(user_id, today())
     assert saved.usda_description == BANANA.description
 
@@ -118,20 +118,20 @@ async def test_yes_saves_it(conversation, user_id):
 async def test_no_saves_nothing(conversation, user_id):
     await conversation.say("I had a banana this morning.")
     await conversation.say("No, don't log it.")
-    assert not conversation.called("confirm_food_log")
+    assert not conversation.called("confirm_portions")
     assert await nutrition_db.eaten_on(user_id, today()) == []
 
 
-async def test_correcting_the_amount_prepares_again(conversation):
+async def test_correcting_the_amount_proposes_again(conversation):
     await conversation.say("I had a banana this morning.")
     await conversation.say("Actually, it was two bananas.")
-    first, second = conversation.called("prepare_food_log")[-2:]
+    first, second = conversation.called("propose_portion")[-2:]
     assert second["grams"] == pytest.approx(2 * first["grams"], rel=0.2)
 
 
 async def test_food_usda_lacks_is_logged_as_an_estimate(conversation):
     reply = await conversation.say("I had an Al Baik broast meal for lunch.")
-    assert conversation.called("prepare_estimated_food_log")
+    assert conversation.called("propose_estimated_portion")
     assert "estimate" in reply or "guess" in reply, reply
 
 
@@ -142,11 +142,11 @@ async def test_remaining_protein_matches_the_log(conversation):
     assert "149" in reply or "148" in reply, reply
 
 
-async def test_a_meal_prepares_every_food(conversation, user_id):
+async def test_a_meal_proposes_every_food(conversation, user_id):
     reply = await conversation.say(MEAL)
-    prepared = {arguments["match_id"] for arguments in conversation.called("prepare_food_log")}
-    assert prepared == {EGGS.fdc_id, TOAST.fdc_id, MILK.fdc_id}
-    assert not conversation.called("confirm_food_log")
+    proposed = {arguments["fdc_id"] for arguments in conversation.called("propose_portion")}
+    assert proposed == {EGGS.fdc_id, TOAST.fdc_id, MILK.fdc_id}
+    assert not conversation.called("confirm_portions")
     assert "?" in reply, reply
     assert await nutrition_db.eaten_on(user_id, today()) == []
 

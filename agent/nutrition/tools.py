@@ -36,15 +36,15 @@ Sarjy: Yeah, really good. USDA says about 23 grams a cup, so almost a fifth of y
 
 - Food log: what the user ate today, against daily targets.
 Log only when the user says they ate or had something; a question is just a lookup. To log: look
-up every food they name, pick the match that fits each, and call prepare_food_log once per food in
+up every food they name, pick the USDA food that fits each, and call propose_portion once per food in
 the same turn, before you ask anything: the user sees the pending foods on screen while you read
 them back as one short list with the total calories and ask whether to log them. One clear yes
-saves them all with confirm_food_log; on no, call cancel_food_log; to drop one food ("but no
-milk"), cancel it by name, then confirm the rest; if they change a food or amount, prepare it
+saves them all with confirm_portions; on no, call cancel_portions; to drop one food ("but no
+milk"), cancel it by name, then confirm the rest; if they change a food or amount, propose it
 again. For a countable food (a banana, a burrito) assume a normal one and say so; otherwise ask
-how much. If USDA doesn't have it, prepare your own estimate with prepare_estimated_food_log, also
+how much. If USDA doesn't have it, propose your own estimate with propose_estimated_portion, also
 before asking, and say it's an estimate. For anything about what they've eaten or have left today, call
-get_daily_totals first.
+get_daily_intake first.
 
 Examples:
 User: I had a banana this morning
@@ -87,14 +87,14 @@ class NutritionToolset(llm.Toolset):
         self._filler: SpeechHandle | None = None
 
     @function_tool
-    async def lookup_nutrition(self, context: RunContext, food: str, grams: float) -> dict:
+    async def lookup_nutrition(self, context: RunContext, query: str, grams: float) -> dict:
         """Looks up calories and macros for an amount of food in USDA's database.
 
         Args:
-            food: A generic food name, e.g. "chicken breast cooked" or "white rice cooked".
+            query: A generic food name, e.g. "chicken breast cooked" or "white rice cooked".
             grams: The amount in grams.
         """
-        lookup = asyncio.ensure_future(self.nutrition.lookup(food, grams))
+        lookup = asyncio.ensure_future(self.nutrition.lookup(query, grams))
         done, _ = await asyncio.wait({lookup}, timeout=FILLER_DELAY)
         # Don't start a new filler while the last one is still playing.
         if not done and (self._filler is None or self._filler.done()):
@@ -104,29 +104,29 @@ class NutritionToolset(llm.Toolset):
         return await lookup
 
     @function_tool
-    async def prepare_food_log(self, match_id: int, grams: float, name: str) -> dict:
-        """Proposes logging one food the user ate, using a match from lookup_nutrition; call it
-        once per food, right after the lookups, before asking whether to log them. Nothing is
-        saved until confirm_food_log; the user sees the foods as pending.
+    async def propose_portion(self, fdc_id: int, grams: float, name: str) -> dict:
+        """Proposes logging one food the user ate, using a USDA food from lookup_nutrition; call
+        it once per food, right after the lookups, before asking whether to log them. Nothing is
+        saved until confirm_portions; the user sees the foods as pending.
 
         Args:
-            match_id: The id of the lookup_nutrition match that fits what the user ate.
+            fdc_id: The fdc_id of the lookup_nutrition food that fits what the user ate.
             grams: The amount the user ate, in grams.
             name: The food as the user would say it, shown on screen, in sentence case, e.g.
                 "Banana", "Big Mac", "Beef burrito"; never USDA's description.
         """
-        intake = await self.diary.propose(match_id, grams, name)
+        intake = await self.diary.propose(fdc_id, grams, name)
         if intake is None:
             return {
                 "status": "unknown_food",
-                "next": "Call lookup_nutrition, then use one of its ids.",
+                "next": "Call lookup_nutrition, then use one of its fdc_ids.",
             }
         return {"status": "pending", "pending": asdict(intake)["pending"]}
 
     @function_tool
-    async def prepare_estimated_food_log(
+    async def propose_estimated_portion(
         self,
-        food: str,
+        name: str,
         grams: float,
         calories: float,
         protein_g: float,
@@ -134,10 +134,10 @@ class NutritionToolset(llm.Toolset):
         fat_g: float,
     ) -> dict:
         """Proposes logging a food USDA doesn't have, with your own estimate for that amount.
-        Saved only after confirm_food_log, and marked as an estimate.
+        Saved only after confirm_portions, and marked as an estimate.
 
         Args:
-            food: What the user ate, shown on screen, in sentence case, e.g. "Chicken kabsa".
+            name: What the user ate, shown on screen, in sentence case, e.g. "Chicken kabsa".
             grams: The amount the user ate, in grams.
             calories: Your estimate for that amount.
             protein_g: Your estimate for that amount.
@@ -145,11 +145,11 @@ class NutritionToolset(llm.Toolset):
             fat_g: Your estimate for that amount.
         """
         macros = Macros(calories, protein_g, carbs_g, fat_g)
-        intake = await self.diary.propose_estimate(food, grams, macros)
+        intake = await self.diary.propose_estimate(name, grams, macros)
         return {"status": "pending", "pending": asdict(intake)["pending"]}
 
     @function_tool
-    async def confirm_food_log(self) -> dict:
+    async def confirm_portions(self) -> dict:
         """Saves all pending foods. Call only after the user clearly says yes to logging them."""
         intake = await self.diary.confirm()
         if intake is None:
@@ -157,21 +157,21 @@ class NutritionToolset(llm.Toolset):
         return {"status": "saved", **_day(intake)}
 
     @function_tool
-    async def cancel_food_log(self, food: str = "") -> dict:
+    async def cancel_portions(self, name: str = "") -> dict:
         """Drops pending foods the user doesn't want logged.
 
         Args:
-            food: The name you gave the food in prepare_food_log, to drop just that one; empty
+            name: The name you gave the food in propose_portion, to drop just that one; empty
                 to drop all pending foods.
         """
-        intake = await self.diary.cancel(food or None)
+        intake = await self.diary.cancel(name or None)
         if intake is None:
             pending = self.diary.intake().pending
             return {"status": "not_found", "pending": [portion.name for portion in pending]}
         return {"status": "cancelled", "pending": [portion.name for portion in intake.pending]}
 
     @function_tool
-    async def get_daily_totals(self) -> dict:
+    async def get_daily_intake(self) -> dict:
         """Today's logged foods, totals, demo targets and what's remaining."""
         return _day(self.diary.intake())
 

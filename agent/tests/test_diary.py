@@ -93,7 +93,7 @@ async def test_confirm_twice_saves_once(diary, user_id):
 
 
 async def test_parallel_confirms_save_once(diary, user_id):
-    # The LLM sent confirm_food_log several times in one turn; both passed the pending check
+    # The LLM sent confirm_portions several times in one turn; both passed the pending check
     # before either finished saving, so the second appended None and broke every later summary.
     await propose_breakfast(diary)
     results = await asyncio.gather(diary.confirm(), diary.confirm())

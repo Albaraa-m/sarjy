@@ -8,13 +8,13 @@ async def test_finds_food_and_scales_to_grams():
     result = await Nutrition().lookup("chicken breast cooked", 200)
     assert result["status"] == "found"
     assert result["source"] == "usda"
-    assert max(match["protein_g"] for match in result["matches"]) > 40
+    assert max(food["protein_g"] for food in result["foods"]) > 40
 
 
 async def test_finds_prepared_dishes():
     result = await Nutrition().lookup("beef and bean burrito", 250)
     assert result["status"] == "found"
-    assert any("burrito" in match["description"].lower() for match in result["matches"])
+    assert any("burrito" in food["description"].lower() for food in result["foods"])
 
 
 async def test_reports_food_not_in_database():
@@ -36,8 +36,8 @@ def test_scales_macros_from_100_grams():
 async def test_remembers_usda_foods_by_id():
     nutrition = Nutrition()
     result = await nutrition.lookup("banana", 118)
-    first = result["matches"][0]
-    usda_food = nutrition.usda_food(first["id"])
+    first = result["foods"][0]
+    usda_food = nutrition.usda_food(first["fdc_id"])
     assert usda_food is not None
     assert usda_food.description == first["description"]
     assert usda_food.per_100g.scaled(118).calories == first["calories"]
@@ -50,5 +50,5 @@ def test_unknown_fdc_id_is_none():
 async def test_prefers_sr_legacy_when_both_datasets_match():
     # A 118 g banana was spoken as 105 kcal (SR Legacy) but logged as 115 (FNDDS "Banana, raw").
     result = await Nutrition().lookup("bananas raw", 118)
-    assert result["matches"][0]["description"] == "Bananas, raw"
-    assert result["matches"][0]["calories"] == 105.0
+    assert result["foods"][0]["description"] == "Bananas, raw"
+    assert result["foods"][0]["calories"] == 105.0

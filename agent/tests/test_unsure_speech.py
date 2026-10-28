@@ -11,9 +11,9 @@ from sarjy import UNSURE_NOTE, Sarjy
 CUT_OFF = "And I also had the"
 FOOD_TOOLS = {
     "lookup_nutrition",
-    "prepare_food_log",
-    "prepare_estimated_food_log",
-    "confirm_food_log",
+    "propose_portion",
+    "propose_estimated_portion",
+    "confirm_portions",
 }
 
 

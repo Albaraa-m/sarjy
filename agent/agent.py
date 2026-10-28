@@ -75,7 +75,7 @@ async def entrypoint(ctx: JobContext):
         # Wait a bit longer than the 0.5 s default before ending the user's turn, so pauses
         # mid-sentence ("I ate rice... and chicken") don't make Sarjy talk over the user.
         turn_handling={"endpointing": {"min_delay": 0.8}},
-        # Logging a meal takes lookups, then prepares, then the read-back; the default of 3 steps
+        # Logging a meal takes lookups, then proposals, then the read-back; the default of 3 steps
         # cut a three-food breakfast short.
         max_tool_steps=5,
     )

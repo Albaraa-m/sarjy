@@ -80,9 +80,9 @@ class Nutrition:
             "status": "found",
             "source": "usda",
             "grams": grams,
-            "matches": [
+            "foods": [
                 {
-                    "id": usda_food.fdc_id,
+                    "fdc_id": usda_food.fdc_id,
                     "description": usda_food.description,
                     **asdict(usda_food.per_100g.scaled(grams)),
                 }
