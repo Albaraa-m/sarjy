@@ -25,7 +25,7 @@ export function Welcome({ onStart }: WelcomeProps) {
 
   return (
     <section className="flex flex-1 flex-col items-center justify-center pb-14">
-      <SarjyAura size="xl" state="idle" className="-mt-14 -mb-16" />
+      <SarjyAura state="idle" className="-mt-14 -mb-16" />
       <form
         onSubmit={submit}
         className="flex w-full max-w-xs items-center gap-2 border-b border-line transition focus-within:border-accent-line"

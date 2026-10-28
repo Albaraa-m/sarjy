@@ -36,7 +36,7 @@ export function CallScreen({
             {status?.text}
           </p>
           {/* The glow fills only the middle of the Aura's square, so its edges overlap neighbors. */}
-          <SarjyAura size="xl" state={agentState} audioTrack={agentTrack} className="-my-14" />
+          <SarjyAura state={agentState} audioTrack={agentTrack} className="-my-14" />
           <StartAudio
             label="Tap to hear Sarjy"
             className="mb-4 rounded-full border border-line bg-surface px-4 py-2 text-label hover:bg-surface-hover"
