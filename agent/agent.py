@@ -17,8 +17,7 @@ logger = logging.getLogger("sarjy")
 
 server = AgentServer()
 
-# Cartesia's "Layan" voice.
-VOICE_ID = "64a941ac-07ac-462c-a81c-008e353dd83e"
+LAYAN_VOICE_ID = "64a941ac-07ac-462c-a81c-008e353dd83e"
 # Says "Sarjy" the Arabic way (سرجي); the transcript keeps the English spelling.
 PRONUNCIATION_DICT_ID = "pdict_PoUFShWfoiSB8iYAxWrE42"
 
@@ -69,7 +68,7 @@ async def entrypoint(ctx: JobContext):
         ),
         tts=cartesia.TTS(
             model="sonic-3.6",
-            voice=VOICE_ID,
+            voice=LAYAN_VOICE_ID,
             pronunciation_dict_id=PRONUNCIATION_DICT_ID,
             api_key=settings.cartesia_api_key.get_secret_value(),
         ),

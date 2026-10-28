@@ -1,11 +1,3 @@
-"""Logs what each voice stage did, so a broken reply can be traced to the LLM, the TTS or LiveKit.
-
-Compare, per reply:
-- "llm generated" (what the LLM wrote) with "spoken" (what reached the user),
-- the "interrupted" flag (LiveKit stopped playback because it heard the user),
-- any "error from" line (which provider failed).
-"""
-
 import logging
 from collections.abc import AsyncGenerator
 
@@ -23,6 +15,7 @@ from livekit.agents import (
 logger = logging.getLogger("sarjy.diagnostics")
 
 
+# Per reply, "llm generated" vs "spoken" tells whether the LLM, the TTS or LiveKit lost words.
 def watch(session: AgentSession) -> None:
     session.on("conversation_item_added", _log_spoken)
     session.on("error", _log_error)
