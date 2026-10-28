@@ -28,6 +28,16 @@ async def test_reports_unavailable_when_api_fails(monkeypatch):
     assert result == {"status": "unavailable"}
 
 
+def test_adds_macros_rounded_to_a_tenth():
+    assert Macros(0.1, 1.0, 2.0, 3.0) + Macros(0.2, 1.05, 0, 0) == Macros(0.3, 2.0, 2.0, 3.0)
+
+
+def test_remaining_never_goes_below_zero():
+    targets = Macros(calories=2200, protein_g=150, carbs_g=220, fat_g=70)
+    eaten = Macros(calories=2500, protein_g=40.25, carbs_g=220, fat_g=10)
+    assert targets.remaining_after(eaten) == Macros(0, 109.8, 0, 60)
+
+
 def test_scales_macros_from_100_grams():
     banana = Macros(calories=89, protein_g=1.09, carbs_g=22.84, fat_g=0.33)
     assert banana.scaled(118) == Macros(calories=105.0, protein_g=1.3, carbs_g=27.0, fat_g=0.4)

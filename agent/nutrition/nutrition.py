@@ -30,6 +30,23 @@ class Macros:
             fat_g=round(self.fat_g * factor, 1),
         )
 
+    def __add__(self, other: Macros) -> Macros:
+        return Macros(
+            calories=round(self.calories + other.calories, 1),
+            protein_g=round(self.protein_g + other.protein_g, 1),
+            carbs_g=round(self.carbs_g + other.carbs_g, 1),
+            fat_g=round(self.fat_g + other.fat_g, 1),
+        )
+
+    def remaining_after(self, eaten: Macros) -> Macros:
+        """What's left of these targets after `eaten`, never below zero."""
+        return Macros(
+            calories=max(round(self.calories - eaten.calories, 1), 0),
+            protein_g=max(round(self.protein_g - eaten.protein_g, 1), 0),
+            carbs_g=max(round(self.carbs_g - eaten.carbs_g, 1), 0),
+            fat_g=max(round(self.fat_g - eaten.fat_g, 1), 0),
+        )
+
 
 @dataclass(frozen=True)
 class UsdaFood:

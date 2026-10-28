@@ -1,5 +1,5 @@
 import json
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
@@ -11,6 +11,7 @@ from .nutrition import Macros, Nutrition, Portion
 TIMEZONE = ZoneInfo("Asia/Riyadh")
 # Demo targets, not personalized advice; the UI labels them as such.
 DAILY_TARGETS = Macros(calories=2200, protein_g=150, carbs_g=220, fat_g=70)
+NO_MACROS = Macros(calories=0, protein_g=0, carbs_g=0, fat_g=0)
 
 
 @dataclass(frozen=True)
@@ -98,15 +99,14 @@ class Diary:
         return await self._changed()
 
     def intake(self) -> DailyIntake:
-        totals = _sum(portion.macros for portion in self._eaten)
-        remaining = Macros(
-            calories=max(round(DAILY_TARGETS.calories - totals.calories, 1), 0),
-            protein_g=max(round(DAILY_TARGETS.protein_g - totals.protein_g, 1), 0),
-            carbs_g=max(round(DAILY_TARGETS.carbs_g - totals.carbs_g, 1), 0),
-            fat_g=max(round(DAILY_TARGETS.fat_g - totals.fat_g, 1), 0),
-        )
+        totals = sum((portion.macros for portion in self._eaten), NO_MACROS)
         return DailyIntake(
-            self.day, list(self._eaten), list(self._pending), totals, DAILY_TARGETS, remaining
+            self.day,
+            list(self._eaten),
+            list(self._pending),
+            totals,
+            DAILY_TARGETS,
+            DAILY_TARGETS.remaining_after(totals),
         )
 
     async def _add_pending(self, portion: Portion) -> DailyIntake:
@@ -138,15 +138,3 @@ def _is_called(portion: Portion, name: str) -> bool:
     # The LLM cancels by the name it gave the food ("Milk"), not USDA's ("Milk, whole").
     names = (portion.name, portion.usda_description or "")
     return name.casefold() in (known.casefold() for known in names)
-
-
-def _sum(all_macros: Iterable[Macros]) -> Macros:
-    total = Macros(0, 0, 0, 0)
-    for macros in all_macros:
-        total = Macros(
-            calories=round(total.calories + macros.calories, 1),
-            protein_g=round(total.protein_g + macros.protein_g, 1),
-            carbs_g=round(total.carbs_g + macros.carbs_g, 1),
-            fat_g=round(total.fat_g + macros.fat_g, 1),
-        )
-    return total
