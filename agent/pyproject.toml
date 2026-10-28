@@ -7,6 +7,7 @@ dependencies = [
     "groq>=1.7.0",
     "httpx>=0.28.1",
     "livekit-agents[cartesia,deepgram,groq,openai]>=1.8.9",
+    "pydantic-settings>=2.16.1",
     "python-dotenv>=1.2.4",
 ]
 

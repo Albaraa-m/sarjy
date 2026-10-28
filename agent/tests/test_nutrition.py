@@ -1,4 +1,7 @@
+from pydantic import SecretStr
+
 from nutrition import Macros, Nutrition
+from settings import settings
 
 
 async def test_finds_food_and_scales_to_grams():
@@ -20,7 +23,7 @@ async def test_reports_food_not_in_database():
 
 
 async def test_reports_unavailable_when_api_fails(monkeypatch):
-    monkeypatch.setenv("FDC_API_KEY", "invalid-key")
+    monkeypatch.setattr(settings, "fdc_api_key", SecretStr("invalid-key"))
     result = await Nutrition().lookup("white rice cooked", 100)
     assert result == {"status": "unavailable"}
 

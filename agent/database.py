@@ -1,7 +1,8 @@
 import logging
-import os
 
 import asyncpg
+
+from settings import settings
 
 logger = logging.getLogger("sarjy.database")
 
@@ -42,7 +43,7 @@ async def _create_pool() -> asyncpg.Pool:
 
 async def _connect() -> asyncpg.Pool:
     return await asyncpg.create_pool(
-        os.environ["DATABASE_URL"],
+        settings.database_url.get_secret_value(),
         min_size=1,
         max_size=5,
         timeout=TIMEOUT_S,
