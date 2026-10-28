@@ -1,7 +1,7 @@
 from datetime import date
 
-from nutrition import Macros, Portion
 from nutrition import db as nutrition_db
+from nutrition.models import Macros, Portion
 
 TODAY = date(2026, 10, 27)
 BANANA = Portion(

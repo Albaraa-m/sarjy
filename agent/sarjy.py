@@ -5,7 +5,7 @@ from livekit.agents import Agent, FlushSentinel, ModelSettings, llm
 
 import diagnostics
 from memory import UserMemory
-from nutrition import NutritionToolset
+from nutrition.tools import NutritionToolset
 
 PERSONA = """You are Sarjy, a personal assistant. Talk like a normal person in a relaxed conversation.
 

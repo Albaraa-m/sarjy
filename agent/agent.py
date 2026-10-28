@@ -6,7 +6,9 @@ from livekit.plugins import cartesia, deepgram, groq, openai
 
 import diagnostics
 from memory import UserMemory
-from nutrition import DailyIntake, Diary, NutritionToolset
+from nutrition.diary import Diary
+from nutrition.models import DailyIntake
+from nutrition.tools import NutritionToolset
 from sarjy import Sarjy
 from settings import settings
 

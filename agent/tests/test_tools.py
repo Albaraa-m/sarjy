@@ -1,4 +1,5 @@
-from livekit.agents import AgentSession
+import pytest
+from livekit.agents import AgentSession, ToolError
 
 from memory import UserMemory
 from sarjy import Sarjy
@@ -12,6 +13,11 @@ async def test_looks_up_nutrition(llm, user_id, nutrition_tools):
 
 
 async def test_proposing_a_food_never_looked_up_is_rejected(nutrition_tools):
-    result = await nutrition_tools.propose_portion(999, 100, "Mystery")
-    assert result["status"] == "unknown_food"
+    with pytest.raises(ToolError):
+        await nutrition_tools.propose_portion(999, 100, "Mystery")
     assert nutrition_tools.diary.intake().pending == []
+
+
+async def test_cancelling_an_unknown_food_lists_the_pending_ones(nutrition_tools):
+    with pytest.raises(ToolError, match="Pending: none"):
+        await nutrition_tools.cancel_portions("Orange juice")

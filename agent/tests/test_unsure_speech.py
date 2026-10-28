@@ -3,8 +3,9 @@ from livekit.agents import AgentSession, ChatMessage
 from livekit.agents.llm import ChatContext
 
 from memory import UserMemory
-from nutrition import DailyIntake, Diary, NutritionToolset
-from nutrition.diary import today
+from nutrition.diary import Diary, today
+from nutrition.models import DailyIntake
+from nutrition.tools import NutritionToolset
 from sarjy import UNSURE_NOTE, Sarjy
 
 # A live call: Deepgram dropped an Arabic dish name and returned this at 67% confidence.

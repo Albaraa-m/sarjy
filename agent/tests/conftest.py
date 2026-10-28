@@ -4,7 +4,9 @@ import pytest
 from livekit.plugins import openai
 
 import database
-from nutrition import DailyIntake, Diary, NutritionToolset
+from nutrition.diary import Diary
+from nutrition.models import DailyIntake
+from nutrition.tools import NutritionToolset
 from settings import settings
 
 

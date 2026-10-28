@@ -2,7 +2,7 @@ from livekit.agents import AgentSession
 from livekit.plugins import openai
 
 from memory import UserMemory
-from nutrition import NutritionToolset
+from nutrition.tools import NutritionToolset
 from sarjy import Sarjy
 
 

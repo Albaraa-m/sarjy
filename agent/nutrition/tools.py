@@ -1,15 +1,18 @@
 import asyncio
+import logging
 import random
 from collections.abc import Awaitable, Callable
 
 import httpx
-from livekit.agents import RunContext, function_tool, llm
+from livekit.agents import RunContext, ToolError, function_tool, llm
 from livekit.agents.voice import SpeechHandle
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from . import usda
 from .diary import Diary
-from .models import DailyIntake, Macros, Portion, UsdaFood
+from .models import Macros, Portion, UsdaFood
+
+logger = logging.getLogger("sarjy.nutrition")
 
 INSTRUCTIONS = """
 - Nutrition: calories and macros for foods.
@@ -63,10 +66,10 @@ User: I ate a plate of kabsa
 Sarjy: USDA doesn't have kabsa, so my estimate for a normal plate is about 700 calories. Log that?"""
 
 # Said only when a lookup is slow, so quick answers come without filler.
-FILLER_DELAY = 0.6
+FILLER_DELAY_S = 0.6
 # After a filler, answer no sooner than this, so it sounds like Sarjy actually looked it up.
-MIN_LOOKUP_AFTER_FILLER = 1.2
-FILLERS = [
+MIN_LOOKUP_AFTER_FILLER_S = 1.2
+FILLERS = (
     "Hmm, let me check.",
     "Oh, one sec.",
     "Let me pull that up.",
@@ -75,11 +78,24 @@ FILLERS = [
     "Let me see.",
     "Uh, give me a sec.",
     "Okay, looking it up.",
-]
+)
+
+
+class ScaledFood(BaseModel):
+    fdc_id: int
+    description: str
+    macros: Macros
+
+
+class LookupResult(BaseModel):
+    grams: float
+    # Empty when USDA doesn't have the food.
+    foods: list[ScaledFood]
 
 
 class NutritionToolset(llm.Toolset):
-    """The nutrition tools the LLM can call, plus the instructions for using them."""
+    """The nutrition tools the LLM can call, plus the instructions for using them.
+    Each tool returns JSON (LiveKit sends a tool's result to the LLM as a string)."""
 
     instructions = INSTRUCTIONS
 
@@ -96,24 +112,28 @@ class NutritionToolset(llm.Toolset):
         self._filler: SpeechHandle | None = None
 
     @function_tool
-    async def lookup_nutrition(self, context: RunContext, query: str, grams: float) -> dict:
+    async def lookup_nutrition(self, context: RunContext, query: str, grams: float) -> str:
         """Looks up calories and macros for an amount of food in USDA's database.
 
         Args:
             query: A generic food name, e.g. "chicken breast cooked" or "white rice cooked".
             grams: The amount in grams.
         """
-        lookup = asyncio.ensure_future(self._lookup(query, grams))
-        done, _ = await asyncio.wait({lookup}, timeout=FILLER_DELAY)
-        # Don't start a new filler while the last one is still playing.
-        if not done and (self._filler is None or self._filler.done()):
-            # Kept out of the chat history: the LLM should answer, not continue the filler.
-            self._filler = context.session.say(random.choice(FILLERS), add_to_chat_ctx=False)
-            await asyncio.sleep(MIN_LOOKUP_AFTER_FILLER)
-        return await lookup
+        try:
+            usda_foods = await self._with_filler(context, self._search(query))
+        except (httpx.HTTPError, ValidationError) as error:
+            raise ToolError("USDA is unavailable; give a labeled estimate.") from error
+        self._usda_foods.update({food.fdc_id: food for food in usda_foods})
+        foods = [
+            ScaledFood(
+                fdc_id=food.fdc_id, description=food.description, macros=food.per_100g.scaled(grams)
+            )
+            for food in usda_foods
+        ]
+        return LookupResult(grams=grams, foods=foods).model_dump_json()
 
     @function_tool
-    async def propose_portion(self, fdc_id: int, grams: float, name: str) -> dict:
+    async def propose_portion(self, fdc_id: int, grams: float, name: str) -> str:
         """Proposes logging one food the user ate, using a USDA food from lookup_nutrition; call
         it once per food, right after the lookups, before asking whether to log them. Nothing is
         saved until confirm_portions; the user sees the foods as pending.
@@ -126,12 +146,9 @@ class NutritionToolset(llm.Toolset):
         """
         usda_food = self._usda_foods.get(fdc_id)
         if usda_food is None:
-            return {
-                "status": "unknown_food",
-                "next": "Call lookup_nutrition, then use one of its fdc_ids.",
-            }
+            raise ToolError("Call lookup_nutrition first, then use one of its fdc_ids.")
         intake = await self.diary.propose(usda_food.portion(grams, name))
-        return {"status": "pending", "pending": intake.model_dump()["pending"]}
+        return intake.model_dump_json()
 
     @function_tool
     async def propose_estimated_portion(
@@ -142,7 +159,7 @@ class NutritionToolset(llm.Toolset):
         protein_g: float,
         carbs_g: float,
         fat_g: float,
-    ) -> dict:
+    ) -> str:
         """Proposes logging a food USDA doesn't have, with your own estimate for that amount.
         Saved only after confirm_portions, and marked as an estimate.
 
@@ -159,18 +176,21 @@ class NutritionToolset(llm.Toolset):
             name=name, usda_description=None, grams=grams, macros=macros, source="estimate"
         )
         intake = await self.diary.propose(portion)
-        return {"status": "pending", "pending": intake.model_dump()["pending"]}
+        return intake.model_dump_json()
 
     @function_tool
-    async def confirm_portions(self) -> dict:
+    async def confirm_portions(self) -> str:
         """Saves all pending foods. Call only after the user clearly says yes to logging them."""
-        intake = await self.diary.confirm()
-        if intake is None:
-            return {"status": "nothing_pending"}
-        return {"status": "saved", **_day(intake)}
+        try:
+            intake = await self.diary.confirm()
+        except Exception as error:
+            logger.exception("saving pending portions failed")
+            raise ToolError("Couldn't save; ask the user to try again.") from error
+        # Nothing was pending, e.g. a repeated yes: saving again would log the foods twice.
+        return (intake or self.diary.intake()).model_dump_json()
 
     @function_tool
-    async def cancel_portions(self, name: str = "") -> dict:
+    async def cancel_portions(self, name: str = "") -> str:
         """Drops pending foods the user doesn't want logged.
 
         Args:
@@ -179,42 +199,22 @@ class NutritionToolset(llm.Toolset):
         """
         intake = await self.diary.cancel(name or None)
         if intake is None:
-            pending = self.diary.intake().pending
-            return {"status": "not_found", "pending": [portion.name for portion in pending]}
-        return {"status": "cancelled", "pending": [portion.name for portion in intake.pending]}
+            pending = ", ".join(portion.name for portion in self.diary.intake().pending)
+            raise ToolError(f"No pending food is called {name!r}. Pending: {pending or 'none'}.")
+        return intake.model_dump_json()
 
     @function_tool
-    async def get_daily_intake(self) -> dict:
+    async def get_daily_intake(self) -> str:
         """Today's logged foods, totals, demo targets and what's remaining."""
-        return _day(self.diary.intake())
+        return self.diary.intake().model_dump_json()
 
-    async def _lookup(self, query: str, grams: float) -> dict:
-        try:
-            usda_foods = await self._search(query)
-        except httpx.HTTPError, ValidationError:
-            return {"status": "unavailable"}
-        if not usda_foods:
-            return {"status": "not_found"}
-        self._usda_foods.update({usda_food.fdc_id: usda_food for usda_food in usda_foods})
-        return {
-            "status": "found",
-            "source": "usda",
-            "grams": grams,
-            "foods": [
-                {
-                    "fdc_id": usda_food.fdc_id,
-                    "description": usda_food.description,
-                    **usda_food.per_100g.scaled(grams).model_dump(),
-                }
-                for usda_food in usda_foods
-            ],
-        }
-
-
-def _day(intake: DailyIntake) -> dict:
-    return {
-        "foods": [portion.usda_description or portion.name for portion in intake.eaten],
-        "totals": intake.totals.model_dump(),
-        "targets": intake.targets.model_dump(),
-        "remaining": intake.remaining.model_dump(),
-    }
+    async def _with_filler[T](self, context: RunContext, slow: Awaitable[T]) -> T:
+        """Awaits `slow`, saying a short filler first if it takes longer than FILLER_DELAY_S."""
+        task = asyncio.ensure_future(slow)
+        await asyncio.wait({task}, timeout=FILLER_DELAY_S)
+        # Don't start a new filler while the last one is still playing.
+        if not task.done() and (self._filler is None or self._filler.done()):
+            # Kept out of the chat history: the LLM should answer, not continue the filler.
+            self._filler = context.session.say(random.choice(FILLERS), add_to_chat_ctx=False)
+            await asyncio.sleep(MIN_LOOKUP_AFTER_FILLER_S)
+        return await task

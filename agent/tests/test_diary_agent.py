@@ -5,9 +5,10 @@ from livekit.agents import AgentSession, RunResult
 from livekit.plugins import openai
 
 from memory import UserMemory
-from nutrition import DailyIntake, Diary, Macros, NutritionToolset, UsdaFood
 from nutrition import db as nutrition_db
-from nutrition.diary import today
+from nutrition.diary import Diary, today
+from nutrition.models import DailyIntake, Macros, UsdaFood
+from nutrition.tools import NutritionToolset
 from sarjy import Sarjy
 
 BANANA = UsdaFood(

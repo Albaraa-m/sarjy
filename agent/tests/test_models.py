@@ -1,4 +1,4 @@
-from nutrition import Macros, UsdaFood
+from nutrition.models import Macros, UsdaFood
 
 BANANA = Macros(calories=89, protein_g=1.09, carbs_g=22.84, fat_g=0.33)
 

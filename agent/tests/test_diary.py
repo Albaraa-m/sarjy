@@ -4,10 +4,9 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from nutrition import DailyIntake, Diary, Macros, Portion, UsdaFood
 from nutrition import db as nutrition_db
-from nutrition.diary import DAILY_TARGETS, riyadh_day, today
-from nutrition.models import NO_MACROS
+from nutrition.diary import DAILY_TARGETS, Diary, riyadh_day, today
+from nutrition.models import NO_MACROS, DailyIntake, Macros, Portion, UsdaFood
 
 EGGS = UsdaFood(
     fdc_id=1,

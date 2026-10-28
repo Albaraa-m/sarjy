@@ -2,7 +2,8 @@ import httpx
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from nutrition import Macros, usda
+from nutrition import usda
+from nutrition.models import Macros
 from settings import settings
 
 
