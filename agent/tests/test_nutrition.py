@@ -1,6 +1,8 @@
-from pydantic import SecretStr
+import pytest
+from pydantic import SecretStr, ValidationError
 
 from nutrition import Macros, Nutrition
+from nutrition.usda import parse_foods
 from settings import settings
 
 
@@ -66,3 +68,22 @@ async def test_prefers_sr_legacy_when_both_datasets_match():
     result = await Nutrition().lookup("bananas raw", 118)
     assert result["foods"][0]["description"] == "Bananas, raw"
     assert result["foods"][0]["calories"] == 105.0
+
+
+def test_parses_usda_foods_sr_legacy_first():
+    response = b"""{"foods": [
+        {"fdcId": 2, "description": "Banana, raw", "dataType": "Survey (FNDDS)",
+         "foodNutrients": [{"nutrientNumber": "208", "value": 97}]},
+        {"fdcId": 1, "description": "Bananas, raw", "dataType": "SR Legacy",
+         "foodNutrients": [{"nutrientNumber": "208", "value": 89},
+                           {"nutrientNumber": "203", "value": 1.09},
+                           {"nutrientNumber": "301", "value": 5}]}
+    ]}"""
+    [sr_legacy, fndds] = parse_foods(response)
+    assert (sr_legacy.fdc_id, fndds.fdc_id) == (1, 2)
+    assert sr_legacy.per_100g == Macros(calories=89, protein_g=1.09, carbs_g=0, fat_g=0)
+
+
+def test_malformed_usda_reply_is_rejected():
+    with pytest.raises(ValidationError):
+        parse_foods(b'{"foods": [{"description": "Banana"}]}')
