@@ -71,12 +71,11 @@ FILLER_DELAY_S = 0.6
 MIN_LOOKUP_AFTER_FILLER_S = 1.2
 FILLERS = (
     "Hmm, let me check.",
-    "Oh, one sec.",
+    "Oh, one second.",
     "Let me pull that up.",
-    "Good question, one sec.",
     "Hang on, checking.",
     "Let me see.",
-    "Uh, give me a sec.",
+    "Uh, give me a second.",
     "Okay, looking it up.",
 )
 
