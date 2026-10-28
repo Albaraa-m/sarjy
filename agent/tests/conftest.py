@@ -4,7 +4,7 @@ import pytest
 from livekit.plugins import openai
 
 import database
-from nutrition import DailyIntake, Diary, Nutrition, NutritionToolset
+from nutrition import DailyIntake, Diary, NutritionToolset
 from settings import settings
 
 
@@ -40,5 +40,4 @@ async def ignore_ui(intake: DailyIntake) -> None:
 
 @pytest.fixture
 async def nutrition_tools(user_id) -> NutritionToolset:
-    nutrition = Nutrition()
-    return NutritionToolset(nutrition, await Diary.load(user_id, nutrition, on_change=ignore_ui))
+    return NutritionToolset(await Diary.load(user_id, on_change=ignore_ui))

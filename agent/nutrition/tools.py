@@ -1,12 +1,15 @@
 import asyncio
 import random
+from collections.abc import Awaitable, Callable
 
+import httpx
 from livekit.agents import RunContext, function_tool, llm
 from livekit.agents.voice import SpeechHandle
+from pydantic import ValidationError
 
+from . import usda
 from .diary import Diary
-from .models import DailyIntake, Macros
-from .nutrition import Nutrition
+from .models import DailyIntake, Macros, Portion, UsdaFood
 
 INSTRUCTIONS = """
 - Nutrition: calories and macros for foods.
@@ -80,10 +83,16 @@ class NutritionToolset(llm.Toolset):
 
     instructions = INSTRUCTIONS
 
-    def __init__(self, nutrition: Nutrition, diary: Diary):
+    def __init__(
+        self,
+        diary: Diary,
+        search: Callable[[str], Awaitable[list[UsdaFood]]] = usda.search,
+    ):
         super().__init__(id="nutrition")
-        self.nutrition = nutrition
         self.diary = diary
+        self._search = search
+        # Only foods the LLM was shown can be proposed, so it can't invent an id or its macros.
+        self._usda_foods: dict[int, UsdaFood] = {}
         self._filler: SpeechHandle | None = None
 
     @function_tool
@@ -94,7 +103,7 @@ class NutritionToolset(llm.Toolset):
             query: A generic food name, e.g. "chicken breast cooked" or "white rice cooked".
             grams: The amount in grams.
         """
-        lookup = asyncio.ensure_future(self.nutrition.lookup(query, grams))
+        lookup = asyncio.ensure_future(self._lookup(query, grams))
         done, _ = await asyncio.wait({lookup}, timeout=FILLER_DELAY)
         # Don't start a new filler while the last one is still playing.
         if not done and (self._filler is None or self._filler.done()):
@@ -115,12 +124,13 @@ class NutritionToolset(llm.Toolset):
             name: The food as the user would say it, shown on screen, in sentence case, e.g.
                 "Banana", "Big Mac", "Beef burrito"; never USDA's description.
         """
-        intake = await self.diary.propose(fdc_id, grams, name)
-        if intake is None:
+        usda_food = self._usda_foods.get(fdc_id)
+        if usda_food is None:
             return {
                 "status": "unknown_food",
                 "next": "Call lookup_nutrition, then use one of its fdc_ids.",
             }
+        intake = await self.diary.propose(usda_food.portion(grams, name))
         return {"status": "pending", "pending": intake.model_dump()["pending"]}
 
     @function_tool
@@ -145,7 +155,10 @@ class NutritionToolset(llm.Toolset):
             fat_g: Your estimate for that amount.
         """
         macros = Macros(calories=calories, protein_g=protein_g, carbs_g=carbs_g, fat_g=fat_g)
-        intake = await self.diary.propose_estimate(name, grams, macros)
+        portion = Portion(
+            name=name, usda_description=None, grams=grams, macros=macros, source="estimate"
+        )
+        intake = await self.diary.propose(portion)
         return {"status": "pending", "pending": intake.model_dump()["pending"]}
 
     @function_tool
@@ -174,6 +187,28 @@ class NutritionToolset(llm.Toolset):
     async def get_daily_intake(self) -> dict:
         """Today's logged foods, totals, demo targets and what's remaining."""
         return _day(self.diary.intake())
+
+    async def _lookup(self, query: str, grams: float) -> dict:
+        try:
+            usda_foods = await self._search(query)
+        except httpx.HTTPError, ValidationError:
+            return {"status": "unavailable"}
+        if not usda_foods:
+            return {"status": "not_found"}
+        self._usda_foods.update({usda_food.fdc_id: usda_food for usda_food in usda_foods})
+        return {
+            "status": "found",
+            "source": "usda",
+            "grams": grams,
+            "foods": [
+                {
+                    "fdc_id": usda_food.fdc_id,
+                    "description": usda_food.description,
+                    **usda_food.per_100g.scaled(grams).model_dump(),
+                }
+                for usda_food in usda_foods
+            ],
+        }
 
 
 def _day(intake: DailyIntake) -> dict:

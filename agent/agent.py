@@ -6,7 +6,7 @@ from livekit.plugins import cartesia, deepgram, groq, openai
 
 import diagnostics
 from memory import UserMemory
-from nutrition import DailyIntake, Diary, Nutrition, NutritionToolset
+from nutrition import DailyIntake, Diary, NutritionToolset
 from sarjy import Sarjy
 from settings import settings
 
@@ -37,8 +37,7 @@ async def entrypoint(ctx: JobContext):
         # The web "Today" panel renders this attribute; a browser that (re)joins gets the latest.
         await ctx.room.local_participant.set_attributes({"nutrition": intake.model_dump_json()})
 
-    nutrition = Nutrition()
-    diary = await Diary.load(user_id, nutrition, on_change=show_intake)
+    diary = await Diary.load(user_id, on_change=show_intake)
     # Before the voice session starts, so the panel fills in as Sarjy joins, not seconds later.
     await show_intake(diary.intake())
 
@@ -82,4 +81,4 @@ async def entrypoint(ctx: JobContext):
     memory.listen(session)
     ctx.add_shutdown_callback(memory.remember_rest)
     diagnostics.watch(session)
-    await session.start(agent=Sarjy(memory, NutritionToolset(nutrition, diary)), room=ctx.room)
+    await session.start(agent=Sarjy(memory, NutritionToolset(diary)), room=ctx.room)

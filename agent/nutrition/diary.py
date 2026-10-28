@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo
 
 from . import db
 from .models import NO_MACROS, DailyIntake, Macros, Portion
-from .nutrition import Nutrition
 
 # "Today" is the user's day in Saudi Arabia, not the server's (UTC) day.
 TIMEZONE = ZoneInfo("Asia/Riyadh")
@@ -20,13 +19,11 @@ class Diary:
     def __init__(
         self,
         user_id: str,
-        nutrition: Nutrition,
         on_change: Callable[[DailyIntake], Awaitable[None]],
         day: date,
         eaten: list[Portion],
     ):
         self.user_id = user_id
-        self.nutrition = nutrition
         self._on_change = on_change
         # A call that runs past midnight keeps logging to the day it started.
         self.day = day
@@ -34,35 +31,16 @@ class Diary:
         self._pending: list[Portion] = []
 
     @classmethod
-    async def load(
-        cls,
-        user_id: str,
-        nutrition: Nutrition,
-        on_change: Callable[[DailyIntake], Awaitable[None]],
-    ) -> Diary:
+    async def load(cls, user_id: str, on_change: Callable[[DailyIntake], Awaitable[None]]) -> Diary:
         day = today()
-        return cls(user_id, nutrition, on_change, day, await db.eaten_on(user_id, day))
+        return cls(user_id, on_change, day, await db.eaten_on(user_id, day))
 
-    async def propose(self, fdc_id: int, grams: float, name: str) -> DailyIntake | None:
-        """Adds a looked-up USDA food to the pending portions. None if it was never looked up."""
-        usda_food = self.nutrition.usda_food(fdc_id)
-        if usda_food is None:
-            return None
-        macros = usda_food.per_100g.scaled(grams)
-        return await self._add_pending(
-            Portion(
-                name=name,
-                usda_description=usda_food.description,
-                grams=grams,
-                macros=macros,
-                source="usda",
-            )
-        )
-
-    async def propose_estimate(self, name: str, grams: float, macros: Macros) -> DailyIntake:
-        return await self._add_pending(
-            Portion(name=name, usda_description=None, grams=grams, macros=macros, source="estimate")
-        )
+    async def propose(self, portion: Portion) -> DailyIntake:
+        """Adds `portion` to the pending portions, replacing a pending one of the same food
+        ("actually, two eggs")."""
+        self._pending = [pending for pending in self._pending if not _same_food(pending, portion)]
+        self._pending.append(portion)
+        return await self._changed()
 
     async def confirm(self) -> DailyIntake | None:
         """Saves all pending portions. None if nothing is pending, so a repeated yes can't save
@@ -102,12 +80,6 @@ class Diary:
             targets=DAILY_TARGETS,
             remaining=DAILY_TARGETS.remaining_after(totals),
         )
-
-    async def _add_pending(self, portion: Portion) -> DailyIntake:
-        # Proposing a pending food again replaces it ("actually, two eggs").
-        self._pending = [pending for pending in self._pending if not _same_food(pending, portion)]
-        self._pending.append(portion)
-        return await self._changed()
 
     async def _changed(self) -> DailyIntake:
         intake = self.intake()

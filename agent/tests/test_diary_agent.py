@@ -5,7 +5,7 @@ from livekit.agents import AgentSession, RunResult
 from livekit.plugins import openai
 
 from memory import UserMemory
-from nutrition import DailyIntake, Diary, Macros, Nutrition, NutritionToolset, UsdaFood
+from nutrition import DailyIntake, Diary, Macros, NutritionToolset, UsdaFood
 from nutrition import db as nutrition_db
 from nutrition.diary import today
 from sarjy import Sarjy
@@ -47,29 +47,10 @@ FOODS = {
 MEAL = "Breakfast was three eggs, two slices of toast and a cup of milk."
 
 
-class StubNutrition(Nutrition):
+async def search_stub(query: str) -> list[UsdaFood]:
     """Knows only a few foods, so tests don't depend on USDA's ranking or uptime."""
-
-    async def lookup(self, query: str, grams: float) -> dict:
-        found = list(
-            {food.fdc_id: food for name, food in FOODS.items() if name in query.lower()}.values()
-        )
-        if not found:
-            return {"status": "not_found"}
-        self._usda_foods.update({food.fdc_id: food for food in found})
-        return {
-            "status": "found",
-            "source": "usda",
-            "grams": grams,
-            "foods": [
-                {
-                    "fdc_id": f.fdc_id,
-                    "description": f.description,
-                    **f.per_100g.scaled(grams).model_dump(),
-                }
-                for f in found
-            ],
-        }
+    found = {food.fdc_id: food for name, food in FOODS.items() if name in query.lower()}
+    return list(found.values())
 
 
 async def ignore_ui(intake: DailyIntake) -> None:
@@ -100,9 +81,8 @@ class Conversation:
 
 @pytest.fixture
 async def conversation(llm: openai.LLM, user_id: str):
-    nutrition = StubNutrition()
-    diary = await Diary.load(user_id, nutrition, on_change=ignore_ui)
-    tools = NutritionToolset(nutrition, diary)
+    diary = await Diary.load(user_id, on_change=ignore_ui)
+    tools = NutritionToolset(diary, search=search_stub)
     # Same tool-step limit as agent.py, so a meal's lookups and proposals fit in one turn.
     async with AgentSession(llm=llm, max_tool_steps=5) as session:
         await session.start(Sarjy(await UserMemory.load(user_id), tools))

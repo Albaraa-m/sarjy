@@ -1,9 +1,14 @@
+import logging
+import time
+
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from settings import settings
 
 from .models import Macros, UsdaFood
+
+logger = logging.getLogger("sarjy.usda")
 
 SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
 # Generic foods ("chicken breast, roasted") and prepared dishes ("burrito, beef and bean"), not brands.
@@ -18,10 +23,17 @@ async def search(query: str) -> list[UsdaFood]:
     # POST takes the data types as a JSON list; GET with a comma-separated list randomly returns 400.
     body = {"query": query, "dataType": DATA_TYPES, "pageSize": 3}
     params = {"api_key": settings.fdc_api_key.get_secret_value()}
-    async with httpx.AsyncClient(timeout=3) as client:
-        response = await client.post(SEARCH_URL, params=params, json=body)
-        response.raise_for_status()
-    return parse_foods(response.content)
+    start = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            response = await client.post(SEARCH_URL, params=params, json=body)
+            response.raise_for_status()
+        foods = parse_foods(response.content)
+    except (httpx.HTTPError, ValidationError) as error:
+        logger.warning("USDA search %r failed after %d ms: %s", query, _ms_since(start), error)
+        raise
+    logger.info("USDA search %r: %d foods in %d ms", query, len(foods), _ms_since(start))
+    return foods
 
 
 def parse_foods(search_response: bytes) -> list[UsdaFood]:
@@ -30,6 +42,10 @@ def parse_foods(search_response: bytes) -> list[UsdaFood]:
     # and the LLM tends to quote one and log the other.
     sr_legacy_first = sorted(foods, key=lambda food: food.data_type != "SR Legacy")
     return [food.to_usda_food() for food in sr_legacy_first]
+
+
+def _ms_since(start: float) -> int:
+    return round((time.perf_counter() - start) * 1000)
 
 
 class _Nutrient(BaseModel):

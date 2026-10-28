@@ -50,6 +50,15 @@ class UsdaFood(BaseModel):
     description: str
     per_100g: Macros
 
+    def portion(self, grams: float, name: str) -> Portion:
+        return Portion(
+            name=name,
+            usda_description=self.description,
+            grams=grams,
+            macros=self.per_100g.scaled(grams),
+            source="usda",
+        )
+
 
 class Portion(BaseModel):
     """An amount of something the user ate, with its macros for that amount."""

@@ -3,7 +3,7 @@ from livekit.agents import AgentSession, ChatMessage
 from livekit.agents.llm import ChatContext
 
 from memory import UserMemory
-from nutrition import DailyIntake, Diary, Nutrition, NutritionToolset
+from nutrition import DailyIntake, Diary, NutritionToolset
 from nutrition.diary import today
 from sarjy import UNSURE_NOTE, Sarjy
 
@@ -22,9 +22,8 @@ async def ignore_ui(intake: DailyIntake) -> None:
 
 
 def sarjy() -> Sarjy:
-    nutrition = Nutrition()
-    diary = Diary("test-unsure", nutrition, ignore_ui, today(), [])
-    return Sarjy(UserMemory("test-unsure", {}), NutritionToolset(nutrition, diary))
+    diary = Diary("test-unsure", ignore_ui, today(), [])
+    return Sarjy(UserMemory("test-unsure", {}), NutritionToolset(diary))
 
 
 @pytest.mark.parametrize(("confidence", "noted"), [(0.67, True), (0.98, False), (None, False)])

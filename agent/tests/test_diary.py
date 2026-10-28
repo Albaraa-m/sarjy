@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from nutrition import DailyIntake, Diary, Macros, Nutrition, Portion, UsdaFood
+from nutrition import DailyIntake, Diary, Macros, Portion, UsdaFood
 from nutrition import db as nutrition_db
 from nutrition.diary import DAILY_TARGETS, riyadh_day, today
 from nutrition.models import NO_MACROS
@@ -26,13 +26,6 @@ MILK = UsdaFood(
 )
 
 
-class StubNutrition(Nutrition):
-    """Three foods already looked up, so tests don't call USDA."""
-
-    def usda_food(self, fdc_id: int) -> UsdaFood | None:
-        return {food.fdc_id: food for food in (EGGS, TOAST, MILK)}.get(fdc_id)
-
-
 @pytest.fixture
 def changes() -> list[DailyIntake]:
     return []
@@ -43,13 +36,13 @@ async def diary(user_id, changes) -> Diary:
     async def record(intake: DailyIntake) -> None:
         changes.append(intake)
 
-    return await Diary.load(user_id, StubNutrition(), on_change=record)
+    return await Diary.load(user_id, on_change=record)
 
 
 async def propose_breakfast(diary: Diary) -> None:
-    await diary.propose(EGGS.fdc_id, 150, "Scrambled eggs")
-    await diary.propose(TOAST.fdc_id, 60, "Toast")
-    await diary.propose(MILK.fdc_id, 244, "Milk")
+    await diary.propose(EGGS.portion(150, "Scrambled eggs"))
+    await diary.propose(TOAST.portion(60, "Toast"))
+    await diary.propose(MILK.portion(244, "Milk"))
 
 
 def descriptions(portions: list[Portion]) -> list[str | None]:
@@ -70,16 +63,16 @@ async def test_parallel_proposals_all_stay_pending(diary):
     # In a live call the LLM prepared eggs, toast and milk at once; with a single pending slot
     # only the last one survived.
     await asyncio.gather(
-        diary.propose(EGGS.fdc_id, 150, "Scrambled eggs"),
-        diary.propose(TOAST.fdc_id, 60, "Toast"),
-        diary.propose(MILK.fdc_id, 244, "Milk"),
+        diary.propose(EGGS.portion(150, "Scrambled eggs")),
+        diary.propose(TOAST.portion(60, "Toast")),
+        diary.propose(MILK.portion(244, "Milk")),
     )
     assert len(diary.intake().pending) == 3
 
 
 async def test_proposing_a_pending_food_again_replaces_it(diary):
     await propose_breakfast(diary)
-    await diary.propose(EGGS.fdc_id, 100, "Scrambled eggs")
+    await diary.propose(EGGS.portion(100, "Scrambled eggs"))
     pending = diary.intake().pending
     assert descriptions(pending) == [TOAST.description, MILK.description, EGGS.description]
     assert pending[-1].grams == 100
@@ -159,21 +152,22 @@ async def test_cancel_all(diary, user_id):
     assert await nutrition_db.eaten_on(user_id, today()) == []
 
 
-async def test_unknown_food_id_is_rejected(diary):
-    assert await diary.propose(999, 100, "Mystery") is None
-
-
 async def test_name_and_usda_description_are_saved(diary, user_id):
-    await diary.propose(MILK.fdc_id, 244, "Milk")
+    await diary.propose(MILK.portion(244, "Milk"))
     await diary.confirm()
     [saved] = await nutrition_db.eaten_on(user_id, today())
     assert (saved.name, saved.usda_description) == ("Milk", MILK.description)
 
 
 async def test_estimate_is_saved_as_estimate(diary, user_id):
-    await diary.propose_estimate(
-        "Al Baik broast", 400, Macros(calories=900, protein_g=50, carbs_g=60, fat_g=50)
+    broast = Portion(
+        name="Al Baik broast",
+        usda_description=None,
+        grams=400,
+        macros=Macros(calories=900, protein_g=50, carbs_g=60, fat_g=50),
+        source="estimate",
     )
+    await diary.propose(broast)
     await diary.confirm()
     [saved] = await nutrition_db.eaten_on(user_id, today())
     assert saved.source == "estimate"
@@ -181,8 +175,8 @@ async def test_estimate_is_saved_as_estimate(diary, user_id):
 
 
 async def test_totals_and_remaining(diary):
-    await diary.propose(EGGS.fdc_id, 100, "Scrambled eggs")
-    await diary.propose(MILK.fdc_id, 100, "Milk")
+    await diary.propose(EGGS.portion(100, "Scrambled eggs"))
+    await diary.propose(MILK.portion(100, "Milk"))
     intake = await diary.confirm()
     assert intake is not None
     assert intake.totals == Macros(calories=210, protein_g=13.2, carbs_g=6.4, fat_g=14.3)
@@ -190,10 +184,10 @@ async def test_totals_and_remaining(diary):
 
 
 async def test_reports_every_change(diary, changes):
-    await diary.propose(EGGS.fdc_id, 150, "Scrambled eggs")
-    await diary.propose(MILK.fdc_id, 244, "Milk")
+    await diary.propose(EGGS.portion(150, "Scrambled eggs"))
+    await diary.propose(MILK.portion(244, "Milk"))
     await diary.confirm()
-    await diary.propose(TOAST.fdc_id, 60, "Toast")
+    await diary.propose(TOAST.portion(60, "Toast"))
     await diary.cancel()
     assert [len(intake.pending) for intake in changes] == [1, 2, 0, 1, 0]
 
@@ -211,7 +205,7 @@ async def test_load_starts_from_todays_saved_portions(user_id):
     async def ignore(intake: DailyIntake) -> None:
         pass
 
-    diary = await Diary.load(user_id, StubNutrition(), on_change=ignore)
+    diary = await Diary.load(user_id, on_change=ignore)
     assert diary.intake().eaten == [milk]
 
 
