@@ -27,8 +27,7 @@ Build Sarjy, a voice assistant that listens and responds by voice.
 - Memory recall works 100% in demo
 
 ## Deep Dive
-Chosen Area: Latency 
-*Details TBD*
+Chosen Area: Food logging, end to end: web UI <-> (voice stream + data stream) <-> voice agent -> tool calls -> USDA / Postgres -> live UI update
 
 ---------------------------------
 
@@ -75,15 +74,13 @@ LiveKit Cloud (room) <--WebRTC audio--> Agent worker (LiveKit Agents)
 - [] Allow the agent to remember facts/preferences
 - [] Add an external API
 - [] Deploy
-- [] Deep dive into latency
+- [] Deep dive into food logging
 - [] Write-up
 
 ### Open Questions
 - What should the external API be?
-- What latency levers to tune?
 - What guardrails (if any)?
 - Should I maintain evals?
-- How much does deployment region affect latency?
 
 ### Decision Log
 - Cascaded (STT -> LLM -> TTS) over Managed Voice API / Speech-to-Speech: control over per-stage latency and swapping providers
@@ -92,3 +89,4 @@ LiveKit Cloud (room) <--WebRTC audio--> Agent worker (LiveKit Agents)
 - Groq gpt-oss-120b (easy to switch)
 - Cartesia Sonic over ElevenLabs / Deepgram Aura-2 / Groq TTS: fastest time-to-first-audio
 - Neon over Supabase: supports IPv4 on the free tier
+- Deep dive: food logging over latency
