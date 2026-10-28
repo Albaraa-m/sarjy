@@ -4,7 +4,7 @@ A voice assistant that remembers you and tracks what you eat, with every number 
 
 **Live:** https://sarjy-five.vercel.app/ · **Walkthrough:** _Loom link coming soon_
 
-![Sarjy architecture](docs/diagrams/architecture.excalidraw.svg)
+![Sarjy logging breakfast: the voice visual and today's food log](docs/main-screen.png)
 
 ## What it does
 
@@ -20,7 +20,7 @@ A voice assistant that remembers you and tracks what you eat, with every number 
    - "My name is Sam, and my favorite color is green."
    - "How much protein is in a chicken breast?"
    - "I had two eggs and a slice of toast for breakfast." → "Yes"
-   - "Actually, drop the toast." / "What do I have left today?"
+   - "What do I have left today?"
 3. Hang up, start again with the same username, and ask "What's my favorite color?"
 
 The first call after a quiet period can take 10 to 20 seconds while the agent wakes up (LiveKit Cloud free plan).
@@ -28,6 +28,10 @@ The first call after a quiet period can take 10 to 20 seconds while the agent wa
 ## Why USDA FoodData Central
 
 LLMs confidently make up nutrition facts, and a food log is only useful if its numbers are right. USDA FoodData Central is a free, authoritative source for both generic foods and prepared dishes, so it gives Sarjy a reliable backbone: every number it speaks or saves comes from USDA, and anything USDA lacks is labeled as an estimate.
+
+## Architecture
+
+![Sarjy architecture](docs/diagrams/architecture.excalidraw.svg)
 
 ## Tech stack
 
@@ -44,6 +48,7 @@ LLMs confidently make up nutrition facts, and a food log is only useful if its n
 
 ## More
 
+- [Writeup: deep dive, decisions, testing](docs/writeup.md)
 - [Memory and nutrition flows](docs/diagrams/diagrams.md)
 
 ## Project structure
