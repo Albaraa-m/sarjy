@@ -64,7 +64,9 @@ class UserMemory:
     async def _remember(self, turns: list[llm.ChatMessage]) -> None:
         if not any(turn.role == "user" for turn in turns):
             return
-        conversation = "\n".join(f"{SPEAKERS[turn.role]}: {turn.text_content}" for turn in turns)
+        conversation = "\n".join(
+            f"{SPEAKERS[turn.role]}: {(turn.text_content or '').strip()}" for turn in turns
+        )
         async with self._lock:
             try:
                 changes = await extract_changes(conversation, self.facts)

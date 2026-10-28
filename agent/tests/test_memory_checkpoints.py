@@ -29,7 +29,8 @@ async def test_checkpoints_never_resend_turns(monkeypatch):
 
     for turn in range(CHECKPOINT_USER_TURNS + 2):
         add_turn(session, "user", f"message {turn}")
-        add_turn(session, "assistant", f"reply {turn}")
+        # LLM replies can start with blank lines, which would break the transcript's lines.
+        add_turn(session, "assistant", f"\n\nreply {turn}")
     await memory.remember_rest()
 
     assert len(extractor.conversations) == 2
