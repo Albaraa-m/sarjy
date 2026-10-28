@@ -8,7 +8,9 @@ import diagnostics
 from memory import UserMemory
 from nutrition import DaySummary, FoodLog, Nutrition, NutritionTools
 from sarjy import Sarjy
+from settings import settings
 
+# LiveKit's CLI reads its LIVEKIT_* credentials from the environment.
 load_dotenv()
 
 logger = logging.getLogger("sarjy")
@@ -43,20 +45,33 @@ async def entrypoint(ctx: JobContext):
 
     # VAD (Silero) and turn detection (LiveKit turn detector) use framework defaults.
     session = AgentSession(
-        stt=deepgram.STT(model="nova-3", keyterm=["Sarjy"]),
+        stt=deepgram.STT(
+            model="nova-3",
+            keyterm=["Sarjy"],
+            api_key=settings.deepgram_api_key.get_secret_value(),
+        ),
         # Qwen on Cerebras has the rate limits a live demo needs; if it fails or is rate limited,
         # the same request goes to gpt-oss on Groq. Low (not "none") reasoning: with thinking fully
         # off, Qwen on Cerebras often stops after a word or two.
         llm=llm.FallbackAdapter(
             [
-                openai.LLM.with_cerebras(model="qwen-3.8-27b", reasoning_effort="low"),
-                groq.LLM(model="openai/gpt-oss-120b", reasoning_effort="low"),
+                openai.LLM.with_cerebras(
+                    model="qwen-3.8-27b",
+                    reasoning_effort="low",
+                    api_key=settings.cerebras_api_key.get_secret_value(),
+                ),
+                groq.LLM(
+                    model="openai/gpt-oss-120b",
+                    reasoning_effort="low",
+                    api_key=settings.groq_api_key.get_secret_value(),
+                ),
             ]
         ),
         tts=cartesia.TTS(
             model="sonic-3.6",
             voice=VOICE_ID,
             pronunciation_dict_id=PRONUNCIATION_DICT_ID,
+            api_key=settings.cartesia_api_key.get_secret_value(),
         ),
         # Wait a bit longer than the 0.5 s default before ending the user's turn, so pauses
         # mid-sentence ("I ate rice... and chicken") don't make Sarjy talk over the user.

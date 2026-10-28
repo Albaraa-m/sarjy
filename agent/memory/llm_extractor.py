@@ -4,6 +4,8 @@ import logging
 from groq import AsyncGroq, BadRequestError
 from pydantic import ValidationError
 
+from settings import settings
+
 from .changes import Fact, MemoryChanges
 
 logger = logging.getLogger("sarjy.memory")
@@ -33,8 +35,9 @@ MAX_NAME_WORDS = 3
 
 
 async def extract_changes(conversation: str, known: dict[str, str]) -> MemoryChanges:
+    client = AsyncGroq(api_key=settings.groq_api_key.get_secret_value())
     try:
-        response = await AsyncGroq().chat.completions.create(
+        response = await client.chat.completions.create(
             model="openai/gpt-oss-20b",
             reasoning_effort="low",
             messages=[

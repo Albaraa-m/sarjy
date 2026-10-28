@@ -1,13 +1,11 @@
 import uuid
 
 import pytest
-from dotenv import load_dotenv
 from livekit.plugins import openai
 
 import database
 from nutrition import DaySummary, FoodLog, Nutrition, NutritionTools
-
-load_dotenv()
+from settings import settings
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +17,11 @@ async def database_pool():
 
 @pytest.fixture
 def llm() -> openai.LLM:
-    return openai.LLM.with_cerebras(model="qwen-3.8-27b", reasoning_effort="low")
+    return openai.LLM.with_cerebras(
+        model="qwen-3.8-27b",
+        reasoning_effort="low",
+        api_key=settings.cerebras_api_key.get_secret_value(),
+    )
 
 
 @pytest.fixture
