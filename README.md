@@ -48,7 +48,7 @@ LLMs confidently make up nutrition facts, and a food log is only useful if its n
 
 ## More
 
-- [Writeup: deep dive, decisions, testing](docs/writeup.md)
+- [Writeup: food logging deep dive, how the work went](docs/writeup.md)
 - [Memory and nutrition flows](docs/diagrams/diagrams.md)
 
 ## Project structure
