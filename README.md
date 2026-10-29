@@ -23,7 +23,11 @@ A voice assistant that remembers you and tracks what you eat, with every number 
    - "What do I have left today?"
 3. Hang up, start again with the same username, and ask "What's my favorite color?"
 
-The first call after a quiet period can take 10 to 20 seconds while the agent wakes up (LiveKit Cloud free plan).
+### Cold start
+
+The first call after a quiet period can take **10 to 20 seconds** before Sarjy joins. Keep the call open; once the agent is up, later calls don't have this wait.
+
+This comes from the free tiers, not the code. LiveKit Cloud's free plan scales the agent to zero when idle, so the first call has to wait for a new agent process to start. Neon's free tier also suspends the database after about 5 minutes idle, which adds up to a second to the first query. A paid LiveKit plan (an agent kept warm) or an always-on host would remove the wait.
 
 ## Why USDA FoodData Central
 
@@ -45,6 +49,10 @@ LLMs confidently make up nutrition facts, and a food log is only useful if its n
 | Web | Next.js 16, React 19, Tailwind, LiveKit Components, hosted on Vercel |
 | Database | Postgres on Neon |
 | External API | USDA FoodData Central |
+
+## Limitations
+
+- **No authentication.** For the purposes of this project, the username is the only identity: the token route issues a LiveKit token for whatever username is entered, and the agent loads memory and the food log by that name. Anyone who types the same username sees and changes that user's data.
 
 ## More
 
